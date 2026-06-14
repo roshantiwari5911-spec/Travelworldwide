@@ -2,13 +2,13 @@
 const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4cWhzeHlvZHN6YmZ3c3F2Y2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTIzMTgsImV4cCI6MjA5Njk4ODMxOH0._86b10n0y6WPasyJqdCX-MKxtXfXtVyYsW9cS3B43cQ";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Renamed variable to prevent global collision error
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
 
 let dayCount = 0;
 let addDayBtn, daysContainer, previewPane, loginGate, crmWorkspace;
 
-// Track all inputs to update the premium layout preview panel in real-time
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-inclusions', 'pkg-exclusions'];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loginGate = document.getElementById('login-gate');
     crmWorkspace = document.getElementById('crm-workspace');
 
-    // Fixed: Now listening directly to the button click to bypass traditional form reloads
     const submitBtn = document.getElementById('login-submit-btn');
     submitBtn?.addEventListener('click', handleWorkspaceLogin);
 
@@ -31,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
 });
 
-// Smooth fade out of login card and elegant expansion of the workspace
 function unlockPremiumWorkspace() {
     loginGate.style.opacity = "0";
     setTimeout(() => {
@@ -39,12 +37,11 @@ function unlockPremiumWorkspace() {
         crmWorkspace.classList.remove('hidden-workspace');
         setTimeout(() => {
             crmWorkspace.style.opacity = "1";
-            addItineraryDay(); // Instantly initialize Day 1 field automatically
+            addItineraryDay(); 
         }, 50);
     }, 500);
 }
 
-// Processing pipeline for secure workspace access
 async function handleWorkspaceLogin(e) {
     if (e) e.preventDefault();
     
@@ -61,7 +58,7 @@ async function handleWorkspaceLogin(e) {
     submitBtn.disabled = true;
 
     try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
             email: email,
             password: password,
         });
@@ -238,7 +235,7 @@ async function saveItineraryToSupabase() {
     }
 
     try {
-        const { data: itineraryData, error: itinError } = await supabase
+        const { data: itineraryData, error: itinError } = await supabaseClient
             .from('itineraries')
             .insert([{
                 title,
@@ -266,7 +263,7 @@ async function saveItineraryToSupabase() {
         });
 
         if (daysPayload.length > 0) {
-            const { error: daysError } = await supabase
+            const { error: daysError } = await supabaseClient
                 .from('itinerary_days')
                 .insert(daysPayload);
             if (daysError) throw daysError;
