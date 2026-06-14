@@ -1,1 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel World Wide — CRM Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body {
+            background-color: #0b0b0f;
+            color: #f5f5f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-panel:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        }
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        /* FIXED: Added strict display rule properties */
+        .hidden-workspace {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6">
 
+    <canvas id="bg-canvas"></canvas>
+
+    <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl text-center transition-all duration-500 z-50">
+        <h2 class="text-2xl font-semibold tracking-tight text-white mb-2">Travel World Wide</h2>
+        <p class="text-xs text-gray-400 mb-6">Internal CRM System Authentication</p>
+        
+        <form id="login-form" class="space-y-4 text-left" onsubmit="return false;">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+                <input type="email" id="login-email" required placeholder="name@domain.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Password</label>
+                <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+            </div>
+            <button type="button" id="login-submit-btn" class="w-full bg-white text-black font-semibold py-3 rounded-xl hover:bg-gray-200 transition mt-2">
+                Sign In to Workspace
+            </button>
+        </form>
+    </div>
+
+    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl hidden-workspace opacity-0 transition-all duration-700">
+        
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl font-semibold tracking-tight text-white">Travel World Wide CRM</h1>
+                <nav class="flex gap-2 mt-3">
+                    <button id="tab-itinerary" class="text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition">
+                        Quotation Builder
+                    </button>
+                    <button id="tab-customers" class="text-xs bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-4 py-2 rounded-xl transition">
+                        Customer Directory
+                    </button>
+                </nav>
+            </div>
+            <div class="text-left md:text-right text-xs text-gray-500 self-end md:self-auto">
+                <p class="font-medium text-gray-400">salestravelworldwide@gmail.com</p>
+                <p>+91 88926 89595</p>
+            </div>
+        </header>
+
+        <div id="module-itinerary" class="grid grid-cols-1 lg:grid-cols-2 gap-8 transition-all duration-300">
+            <section class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-medium text-white/90">Create New Quotation</h2>
+                    <div class="w-48 text-left">
+                        <select id="pkg-customer-select" class="w-full bg-indigo-950/40 border border-indigo-500/30 rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none focus:border-indigo-500 transition">
+                            <option value="">-- Link Client Profile --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Package Title</label>
+                        <input type="text" id="pkg-title" placeholder="e.g., 4 Nights Luxury Escape to Maldives" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Destination</label>
+                            <input type="text" id="pkg-destination" placeholder="Maldives" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Travel Date</label>
+                            <input type="date" id="pkg-date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
+                            <input type="number" id="pkg-pax" placeholder="2" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Vehicle Standard</label>
+                            <input type="text" id="pkg-vehicle" placeholder="Private Innova Crysta (AC)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-medium text-white/80">Accommodation Breakdown</h3>
+                        <button type="button" id="add-hotel-btn" class="text-xs bg-indigo-600 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-500 transition">
+                            + Add Hotel Stay
+                        </button>
+                    </div>
+                    <div id="hotels-container" class="space-y-4"></div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-medium text-white/80">Day-Wise Itinerary</h3>
+                        <button type="button" id="add-day-btn" class="text-xs bg-white text-black font-medium px-3 py-1.5 rounded-lg hover:bg-gray-200 transition">
+                            + Add Next Day
+                        </button>
+                    </div>
+                    <div id="days-container" class="space-y-4"></div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Inclusions</label>
+                        <textarea id="pkg-inclusions" rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()">Premium accommodations as detailed above&#10;All airport transfers and local sightseeing via private AC vehicle&#10;Daily gourmet breakfast at the hotel properties</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Exclusions</label>
+                        <textarea id="pkg-exclusions" rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()">International or domestic flight tickets&#10;Personal laundry, tips, and items outside mentioned meals&#10;Travel insurance or emergency documentation support</textarea>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Total Package Price (INR)</label>
+                        <input type="number" id="pkg-price" placeholder="₹1,50,000" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition">
+                    </div>
+                    <div class="flex gap-4 pt-2">
+                        <button id="save-btn" class="flex-1 bg-white/10 border border-white/20 text-white font-medium py-3 rounded-xl hover:bg-white/20 transition">Save to CRM</button>
+                        <button id="export-btn" class="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition">Export Premium PDF</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col">
+                <h2 class="text-lg font-medium text-white/90 mb-6">Live Premium Preview</h2>
+                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-8 min-h-[600px] shadow-inner text-sm space-y-6"></div>
+            </section>
+        </div>
+
+        <div id="module-customers" class="hidden space-y-6 transition-all duration-300">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="bg-white/5 border border-white/5 rounded-2xl p-6 h-fit space-y-4">
+                    <h3 class="text-md font-semibold text-white tracking-tight">Onboard New Contact</h3>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Full Client Name</label>
+                            <input type="text" id="cust-name" placeholder="Johnathan Doe" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
+                            <input type="email" id="cust-email" placeholder="john@corporate.com" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Mobile / Contact String</label>
+                            <input type="text" id="cust-mobile" placeholder="+91 XXXXX XXXXX" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Company Affiliation (Optional)</label>
+                            <input type="text" id="cust-company" placeholder="Mastercard Corporate India" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                        </div>
+                    </div>
+                    <button id="add-cust-submit-btn" class="w-full bg-indigo-600 text-white font-medium py-2.5 rounded-xl hover:bg-indigo-500 transition text-xs mt-2">
+                        Commit Profile to Database
+                    </button>
+                </div>
+
+                <div class="lg:col-span-2 bg-white/5 border border-white/5 rounded-2xl p-6">
+                    <h3 class="text-md font-semibold text-white mb-4 tracking-tight">Master Customer Base Index</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left font-sans text-xs">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-white/10 uppercase tracking-wider text-[10px]">
+                                    <th class="pb-3">Client Profile</th>
+                                    <th class="pb-3">Communication Details</th>
+                                    <th class="pb-3">Company Affiliation</th>
+                                    <th class="pb-3 text-right">Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customer-table-rows" class="divide-y divide-white/5 text-gray-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let mouse = { x: undefined, y: undefined };
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(mouse.x && mouse.y) {
+                let gradient = ctx.createRadialGradient(mouse.x, mouse.y, 10, mouse.x, mouse.y, 450);
+                gradient.addColorStop(0, 'rgba(99, 102, 241, 0.08)');
+                gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.03)');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
