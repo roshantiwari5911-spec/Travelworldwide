@@ -9,7 +9,7 @@ let dayCount = 0;
 let hotelCount = 0;
 let flightCount = 0;
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
-let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn;
+let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-airfare', 'pkg-inclusions', 'pkg-exclusions'];
 
@@ -31,10 +31,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     pkgCustomerSelect = document.getElementById('pkg-customer-select');
     customerTableRows = document.getElementById('customer-table-rows');
     addCustSubmitBtn = document.getElementById('add-cust-submit-btn');
+    logoutBtn = document.getElementById('logout-btn'); // Link element reference
 
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
     addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
+    logoutBtn?.addEventListener('click', executeWorkspaceSignOut); // Attach event listener
 
     const submitBtn = document.getElementById('login-submit-btn');
     submitBtn?.addEventListener('click', handleWorkspaceLogin);
@@ -50,25 +52,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
 
-    // FIXED: Auto-Check Session Persistence Pipeline on App Boot-Up
     checkExistingAuthSession();
 });
 
-// Checks if an active login token is stored inside the browser
 async function checkExistingAuthSession() {
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
-        
         if (error) throw error;
 
-        // If a session exists, bypass the login screen entirely and inject workspace components
         if (session) {
             console.log("Persistent active session validated successfully.");
             if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace();
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session check bypass: standard login authentication required.", err.message);
+        console.warn("Session auto-check status: standard credential validation required.", err.message);
+    }
+}
+
+// NEW: Active Token Destruction & Workspace Lock Engine
+async function executeWorkspaceSignOut() {
+    try {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+
+        // Reset the interface views back into locked configurations instantly
+        crmWorkspace.style.opacity = "0";
+        setTimeout(() => {
+            crmWorkspace.classList.add('hidden-workspace');
+            loginGate.style.display = "block";
+            setTimeout(() => {
+                loginGate.style.opacity = "1";
+                // Reset credential form inputs
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
+                const submitBtn = document.getElementById('login-submit-btn');
+                if (submitBtn) {
+                    submitBtn.innerText = "Initialize System Workspace";
+                    submitBtn.style.backgroundColor = "";
+                    submitBtn.style.color = "";
+                    submitBtn.disabled = false;
+                }
+                // Force ambient animation background alpha clarity back up to max intensity layers
+                if (typeof globalAlphaMultiplier !== 'undefined') globalAlphaMultiplier = 1.0;
+                window.location.reload(); // Hard refreshing completely clears active RAM context
+            }, 50);
+        }, 500);
+
+    } catch (err) {
+        alert(`Sign Out Operation Interrupted: ${err.message || err}`);
     }
 }
 
@@ -95,7 +127,6 @@ function unlockPremiumWorkspace() {
         setTimeout(() => {
             crmWorkspace.style.opacity = "1";
             fetchAndRenderCustomerBase(); 
-            // Only auto-add standard slots if they don't already have children inside them
             if (flightsContainer && flightsContainer.children.length === 0) addFlightSectorBlock();
             if (hotelsContainer && hotelsContainer.children.length === 0) addHotelStayBlock(); 
             if (daysContainer && daysContainer.children.length === 0) addItineraryDay();    
@@ -322,19 +353,19 @@ function addHotelStayBlock() {
             <button type="button" onclick="removeHotelStayBlock(${hotelCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
         </div>
         <div class="space-y-3">
-            <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
+            <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
             <div class="grid grid-cols-3 gap-2">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Check-In</label>
-                    <input type="date" class="hotel-in w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
+                    <input type="date" class="hotel-in w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none text-white" oninput="updateLivePreview()">
                 </div>
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Check-Out</label>
-                    <input type="date" class="hotel-out w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
+                    <input type="date" class="hotel-out w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none text-white" oninput="updateLivePreview()">
                 </div>
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Nights</label>
-                    <input type="number" placeholder="2" class="hotel-nights w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
+                    <input type="number" placeholder="2" class="hotel-nights w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none text-white" oninput="updateLivePreview()">
                 </div>
             </div>
         </div>
@@ -359,8 +390,8 @@ function addItineraryDay() {
             <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Day ${dayCount}</span>
             <button type="button" onclick="removeItineraryDay(${dayCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
         </div>
-        <input type="text" placeholder="Day Title: e.g., Arrival & Beachside Sunset Dinner" class="day-title-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
-        <textarea placeholder="Excursion or tour details below this day..." rows="3" class="day-desc-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()"></textarea>
+        <input type="text" placeholder="Day Title: e.g., Arrival & Beachside Sunset Dinner" class="day-title-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
+        <textarea placeholder="Excursion or tour details below this day..." rows="3" class="day-desc-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white resize-none" oninput="updateLivePreview()"></textarea>
     `;
     daysContainer.appendChild(dayBlock);
     updateLivePreview();
