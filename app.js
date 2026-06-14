@@ -13,7 +13,7 @@ let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSel
 
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-airfare', 'pkg-inclusions', 'pkg-exclusions'];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     addDayBtn = document.getElementById('add-day-btn');
     addHotelBtn = document.getElementById('add-hotel-btn');
     addFlightBtn = document.getElementById('add-flight-btn');
@@ -49,7 +49,28 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
+
+    // FIXED: Auto-Check Session Persistence Pipeline on App Boot-Up
+    checkExistingAuthSession();
 });
+
+// Checks if an active login token is stored inside the browser
+async function checkExistingAuthSession() {
+    try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
+        if (error) throw error;
+
+        // If a session exists, bypass the login screen entirely and inject workspace components
+        if (session) {
+            console.log("Persistent active session validated successfully.");
+            if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace();
+            unlockPremiumWorkspace();
+        }
+    } catch (err) {
+        console.warn("Session check bypass: standard login authentication required.", err.message);
+    }
+}
 
 function switchCrmModule(activeModule) {
     if(activeModule === 'itinerary') {
@@ -74,9 +95,10 @@ function unlockPremiumWorkspace() {
         setTimeout(() => {
             crmWorkspace.style.opacity = "1";
             fetchAndRenderCustomerBase(); 
-            addFlightSectorBlock(); // Auto-populate 1 Flight form container segment
-            addHotelStayBlock(); 
-            addItineraryDay();    
+            // Only auto-add standard slots if they don't already have children inside them
+            if (flightsContainer && flightsContainer.children.length === 0) addFlightSectorBlock();
+            if (hotelsContainer && hotelsContainer.children.length === 0) addHotelStayBlock(); 
+            if (daysContainer && daysContainer.children.length === 0) addItineraryDay();    
         }, 50);
     }, 500);
 }
@@ -99,6 +121,7 @@ async function handleWorkspaceLogin(e) {
         if (error) throw error;
         submitBtn.innerText = "Access Granted";
         submitBtn.style.backgroundColor = "#10B981";
+        if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace();
         setTimeout(() => { unlockPremiumWorkspace(); }, 600);
     } catch (err) {
         alert(`Authentication Failed: ${err.message}`);
@@ -187,7 +210,6 @@ async function onboardNewCustomerRecord() {
     }
 }
 
-// NEW: Dynamic Flight Block Generator with optional second leg toggle
 function addFlightSectorBlock() {
     flightCount++;
     const flightBlock = document.createElement('div');
@@ -228,7 +250,6 @@ function addFlightSectorBlock() {
                 </div>
             </div>
 
-            <!-- Leg 2 Connection Interface Option Toggle -->
             <div class="pt-2 border-t border-white/5">
                 <label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer">
                     <input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">
@@ -381,9 +402,8 @@ function compileItineraryHTML() {
     const price = document.getElementById('pkg-price').value || "0";
     const airfare = document.getElementById('pkg-airfare').value || "";
 
-    // Build Flight Blocks Layout HTML rows dynamically
     let flightsHtml = '';
-    const flightBlocks = flightsContainer.children;
+    const flightBlocks = flightsContainer ? flightsContainer.children : [];
     Array.from(flightBlocks).forEach((block) => {
         const fNum = block.querySelector('.fl-num').value || "TBD";
         const fRoute = block.querySelector('.fl-route').value || "---";
@@ -428,7 +448,7 @@ function compileItineraryHTML() {
     });
 
     let hotelsHtml = '';
-    const hotelBlocks = hotelsContainer.children;
+    const hotelBlocks = hotelsContainer ? hotelsContainer.children : [];
     Array.from(hotelBlocks).forEach((block) => {
         const hName = block.querySelector('.hotel-name').value || "Accommodation Pending Confirmation";
         const hIn = formatPremiumDate(block.querySelector('.hotel-in').value);
@@ -454,7 +474,7 @@ function compileItineraryHTML() {
     let excHtml = exclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
 
     let daysHtml = '';
-    const dayBlocks = daysContainer.children;
+    const dayBlocks = daysContainer ? daysContainer.children : [];
     Array.from(dayBlocks).forEach((block, index) => {
         const dTitle = block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`;
         const dDesc = block.querySelector('.day-desc-input').value || 'Excursion details to follow.';
@@ -466,7 +486,6 @@ function compileItineraryHTML() {
         `;
     });
 
-    // Build Airfare Quote Display Section block conditionally
     let airfareBlockHtml = '';
     if (airfare && Number(airfare) > 0) {
         airfareBlockHtml = `
@@ -484,7 +503,6 @@ function compileItineraryHTML() {
 
     return `
         <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
-            <!-- Branding Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
                 <div>
                     <h2 style="font-size: 24px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
@@ -495,8 +513,6 @@ function compileItineraryHTML() {
                     <p style="margin:0;">+91 88926 89595</p>
                 </div>
             </div>
-
-            <!-- Profile Summary Overview -->
             <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
                 <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
                 <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
@@ -505,7 +521,6 @@ function compileItineraryHTML() {
                 <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
             </div>
 
-            <!-- Dynamic Flight Sectors Section -->
             ${flightBlocks.length > 0 ? `
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #0891b2; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Flight Routing & Logistics</h3>
@@ -513,10 +528,8 @@ function compileItineraryHTML() {
             </div>
             ` : ''}
 
-            <!-- Separate Airfare Visual Frame Segment -->
             ${airfareBlockHtml}
 
-            <!-- Stays Breakdown Table -->
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;">Premium Stays & Accommodations</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -533,14 +546,10 @@ function compileItineraryHTML() {
                     </tbody>
                 </table>
             </div>
-
-            <!-- Day Wise Details -->
             <div style="margin-bottom: 25px;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Day-Wise Details</h3>
                 ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:11px;">No itinerary days added yet.</p>'}
             </div>
-
-            <!-- Inclusions / Exclusions Tracker Block -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
@@ -555,8 +564,6 @@ function compileItineraryHTML() {
                     </ul>
                 </div>
             </div>
-
-            <!-- Main Land Package Price Block -->
             <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
                 <div>
                     <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Main Land Package Investment</span>
@@ -635,7 +642,6 @@ async function saveItineraryToSupabase() {
         };
     });
 
-    // Extract dynamic flights information map array
     const flightBlocks = flightsContainer.children;
     const flightsPayload = Array.from(flightBlocks).map(block => {
         return {
@@ -680,7 +686,7 @@ async function saveItineraryToSupabase() {
                 exclusions,
                 hotel_details: hotelsPayload,
                 customer_id: customerId,
-                flight_details: flightsPayload, // Saved dynamically to your JSON matrix mapping row column
+                flight_details: flightsPayload, 
                 airfare_price: airfarePrice
             }]);
 
