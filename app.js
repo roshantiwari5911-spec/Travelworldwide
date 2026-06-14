@@ -194,7 +194,7 @@ function addHotelStayBlock() {
             <button type="button" onclick="removeHotelStayBlock(${hotelCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
         </div>
         <div class="space-y-3">
-            <input type="text" placeholder="Hotel Name (e.g., Bangkok Luxury Resort & Spa)" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
+            <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-white/30 text-white" oninput="updateLivePreview()">
             <div class="grid grid-cols-3 gap-2">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Check-In</label>
@@ -384,46 +384,40 @@ function updateLivePreview() {
     }
 }
 
-// FIXED: Added an explicit browser painting timeout delay parameter
+// ULTIMATE FAIL-SAFE: Uses Native Virtual Printing to completely prevent blank exports
 function generateProfessionalPDF() {
     const title = document.getElementById('pkg-title').value || "Quotation";
-    const exportBtn = document.getElementById('export-btn');
-    
-    exportBtn.innerText = "Generating Layout...";
-    exportBtn.disabled = true;
-    
-    // 1. Setup isolated container inside the DOM tree context tracking
-    const workerContainer = document.createElement('div');
-    workerContainer.style.position = 'fixed';
-    workerContainer.style.left = '-9999px';
-    workerContainer.style.top = '-9999px';
-    workerContainer.style.width = '794px'; // Enforces A4 resolution constraints cleanly
-    workerContainer.style.background = '#ffffff';
-    workerContainer.innerHTML = compileItineraryHTML();
-    
-    document.body.appendChild(workerContainer);
+    const htmlContent = compileItineraryHTML();
 
-    // 2. CRITICAL DELAY: Wait 400ms for browser to render elements prior to printing
-    setTimeout(() => {
-        const options = {
-            margin:       [10, 10, 10, 10],
-            filename:     `${title.replace(/\s+/g, '_')}_TravelWorldwide.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        html2pdf().set(options).from(workerContainer).save().then(() => {
-            workerContainer.remove();
-            exportBtn.innerText = "Export Premium PDF";
-            exportBtn.disabled = false;
-        }).catch(err => {
-            console.error("PDF engine failure:", err);
-            workerContainer.remove();
-            exportBtn.innerText = "Export Premium PDF";
-            exportBtn.disabled = false;
-        });
-    }, 400); 
+    // Open a completely clean browser sub-window context
+    const printWindow = window.open('', '_blank', 'width=900,height=800');
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${title.replace(/\s+/g, '_')}_Proposal</title>
+            <style>
+                body { margin: 0; background: #ffffff; }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            ${htmlContent}
+            <script>
+                // Auto-execute native OS printing window once components paint completely
+                window.onload = function() {
+                    window.print();
+                    // Optional: window.close(); // Closes tab automatically after print confirmation
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
 }
 
 async function saveItineraryToSupabase() {
