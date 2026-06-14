@@ -8,6 +8,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 let dayCount = 0;
 let hotelCount = 0;
 let addDayBtn, addHotelBtn, daysContainer, hotelsContainer, previewPane, loginGate, crmWorkspace;
+let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn;
 
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-inclusions', 'pkg-exclusions'];
 
@@ -19,6 +20,18 @@ document.addEventListener('DOMContentLoaded', () => {
     previewPane = document.getElementById('pdf-preview-pane');
     loginGate = document.getElementById('login-gate');
     crmWorkspace = document.getElementById('crm-workspace');
+    
+    tabItinerary = document.getElementById('tab-itinerary');
+    tabCustomers = document.getElementById('tab-customers');
+    moduleItinerary = document.getElementById('module-itinerary');
+    moduleCustomers = document.getElementById('module-customers');
+    pkgCustomerSelect = document.getElementById('pkg-customer-select');
+    customerTableRows = document.getElementById('customer-table-rows');
+    addCustSubmitBtn = document.getElementById('add-cust-submit-btn');
+
+    tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
+    tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
+    addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
 
     const submitBtn = document.getElementById('login-submit-btn');
     submitBtn?.addEventListener('click', handleWorkspaceLogin);
@@ -34,6 +47,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
 });
 
+function switchCrmModule(activeModule) {
+    if(activeModule === 'itinerary') {
+        tabItinerary.className = "text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition";
+        tabCustomers.className = "text-xs bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-4 py-2 rounded-xl transition";
+        moduleItinerary.classList.remove('hidden');
+        moduleCustomers.classList.add('hidden');
+    } else {
+        tabCustomers.className = "text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition";
+        tabItinerary.className = "text-xs bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-4 py-2 rounded-xl transition";
+        moduleCustomers.classList.remove('hidden');
+        moduleItinerary.classList.add('hidden');
+        fetchAndRenderCustomerBase(); 
+    }
+}
+
 function unlockPremiumWorkspace() {
     loginGate.style.opacity = "0";
     setTimeout(() => {
@@ -41,8 +69,9 @@ function unlockPremiumWorkspace() {
         crmWorkspace.classList.remove('hidden-workspace');
         setTimeout(() => {
             crmWorkspace.style.opacity = "1";
-            addHotelStayBlock(); // Pre-populate 1st Hotel slot automatically
-            addItineraryDay();    // Pre-populate Day 1 block automatically
+            fetchAndRenderCustomerBase(); 
+            addHotelStayBlock(); 
+            addItineraryDay();    
         }, 50);
     }, 500);
 }
@@ -54,34 +83,108 @@ async function handleWorkspaceLogin(e) {
     const submitBtn = document.getElementById('login-submit-btn');
 
     if (!email || !password) {
-        alert("Please fill out both the email and password fields.");
+        alert("Please fill out both fields.");
         return;
     }
-
     submitBtn.innerText = "Verifying Credentials...";
     submitBtn.disabled = true;
 
     try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password,
-        });
-
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
         submitBtn.innerText = "Access Granted";
         submitBtn.style.backgroundColor = "#10B981";
-        submitBtn.style.color = "#FFFFFF";
-
         setTimeout(() => { unlockPremiumWorkspace(); }, 600);
     } catch (err) {
-        alert(`Authentication Failed: ${err.message || err}`);
+        alert(`Authentication Failed: ${err.message}`);
         submitBtn.innerText = "Sign In to Workspace";
         submitBtn.disabled = false;
     }
 }
 
-// Dynamic Hotel Component Insertion Generator
+async function fetchAndRenderCustomerBase() {
+    try {
+        const { data: customerData, error } = await supabaseClient
+            .from('customers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if(pkgCustomerSelect) {
+            pkgCustomerSelect.innerHTML = '<option value="">-- Link Client Profile --</option>';
+            customerData.forEach(cust => {
+                const optText = cust.company_name ? `${cust.full_name} (${cust.company_name})` : cust.full_name;
+                pkgCustomerSelect.innerHTML += `<option value="${cust.id}">${optText}</option>`;
+            });
+        }
+
+        if(customerTableRows) {
+            customerTableRows.innerHTML = '';
+            if(customerData.length === 0) {
+                customerTableRows.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-500 italic">No business contact profiles recorded yet.</td></tr>';
+                return;
+            }
+            customerData.forEach(cust => {
+                const createdStamp = new Date(cust.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                customerTableRows.innerHTML += `
+                    <tr class="hover:bg-white/[0.02] transition">
+                        <td class="py-3 font-medium text-white">${cust.full_name}</td>
+                        <td class="py-3 text-gray-400">${cust.email || '---'}<br/><span class="text-gray-500">${cust.mobile || '---'}</span></td>
+                        <td class="py-3 text-indigo-300 font-mono">${cust.company_name || '<span class="text-gray-600">Individual Stay</span>'}</td>
+                        <td class="py-3 text-right text-gray-500 font-mono">${createdStamp}</td>
+                    </tr>
+                `;
+            });
+        }
+    } catch(err) {
+        console.error("Profile pull fault triggered:", err);
+    }
+}
+
+async function onboardNewCustomerRecord() {
+    const fullName = document.getElementById('cust-name').value;
+    const email = document.getElementById('cust-email').value;
+    const mobile = document.getElementById('cust-mobile').value;
+    const companyName = document.getElementById('cust-company').value;
+
+    if(!fullName) {
+        alert("Please enter a Full Name to save a profile.");
+        return;
+    }
+    addCustSubmitBtn.innerText = "Syncing Profile...";
+    addCustSubmitBtn.disabled = true;
+
+    try {
+        const { error } = await supabaseClient
+            .from('customers')
+            .insert([{ full_name: fullName, email, mobile, company_name: companyName }]);
+
+        if (error) throw error;
+
+        document.getElementById('cust-name').value = '';
+        document.getElementById('cust-email').value = '';
+        document.getElementById('cust-mobile').value = '';
+        document.getElementById('cust-company').value = '';
+
+        addCustSubmitBtn.innerText = "✓ Record Saved!";
+        addCustSubmitBtn.style.backgroundColor = "#059669";
+        
+        await fetchAndRenderCustomerBase();
+
+        setTimeout(() => {
+            addCustSubmitBtn.innerText = "Commit Profile to Database";
+            addCustSubmitBtn.style.backgroundColor = "";
+            addCustSubmitBtn.disabled = false;
+        }, 2000);
+
+    } catch(err) {
+        alert(`Contact pipeline failed: ${err.message}`);
+        addCustSubmitBtn.innerText = "Commit Profile to Database";
+        addCustSubmitBtn.disabled = false;
+    }
+}
+
 function addHotelStayBlock() {
     hotelCount++;
     const hotelBlock = document.createElement('div');
@@ -159,7 +262,6 @@ function reindexDays() {
     });
 }
 
-// Formats ugly system inputs into premium clean UI strings (e.g., "2026-06-14" -> "14 Jun, 2026")
 function formatPremiumDate(dateStr) {
     if (!dateStr) return "---";
     const opts = { day: 'numeric', month: 'short', year: 'numeric' };
@@ -174,7 +276,6 @@ function updateLivePreview() {
     const vehicle = document.getElementById('pkg-vehicle').value || "---";
     const price = document.getElementById('pkg-price').value || "0";
 
-    // Build Hotel Stay Document Rows dynamically
     let hotelsHtml = '';
     const hotelBlocks = hotelsContainer.children;
     Array.from(hotelBlocks).forEach((block) => {
@@ -226,7 +327,6 @@ function updateLivePreview() {
                     <p style="margin:0;">+91 88926 89595</p>
                 </div>
             </div>
-
             <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
                 <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
                 <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
@@ -234,7 +334,6 @@ function updateLivePreview() {
                 <div><strong style="color: #475569;">Total Travelers:</strong> <span style="color: #0f172a; font-weight: 500;">${pax} Adults</span></div>
                 <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
             </div>
-
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;">Premium Stays & Accommodations</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -247,16 +346,14 @@ function updateLivePreview() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${hotelsHtml || '<tr><td colspan="4" style="color:#94a3b8; font-style:italic; padding:10px; font-size:11px;">No properties selected for this route layout.</td></tr>'}
+                        ${hotelsHtml || '<tr><td colspan="4" style="color:#94a3b8; font-style:italic; padding:10px; font-size:11px;">No properties selected.</td></tr>'}
                     </tbody>
                 </table>
             </div>
-
             <div style="margin-bottom: 25px;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Day-Wise Details</h3>
-                ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:11px;">No itinerary days cataloged yet.</p>'}
+                ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:11px;">No itinerary days added yet.</p>'}
             </div>
-
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
@@ -271,7 +368,6 @@ function updateLivePreview() {
                     </ul>
                 </div>
             </div>
-
             <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
                 <div>
                     <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Total Net Investment</span>
@@ -310,13 +406,13 @@ async function saveItineraryToSupabase() {
     const numberOfPeople = parseInt(document.getElementById('pkg-pax').value) || 1;
     const vehicleUsed = document.getElementById('pkg-vehicle').value;
     const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
+    const customerId = document.getElementById('pkg-customer-select').value || null;
 
     const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
     const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
     const inclusions = inclusionsText.split('\n').filter(item => item.trim() !== "");
     const exclusions = exclusionsText.split('\n').filter(item => item.trim() !== "");
 
-    // Extract dynamic accommodations payload array
     const hotelBlocks = hotelsContainer.children;
     const hotelsPayload = Array.from(hotelBlocks).map(block => {
         return {
@@ -335,7 +431,6 @@ async function saveItineraryToSupabase() {
     }
 
     try {
-        // Appends the master package along with hotel summary layouts into your JSON column fields
         const { data: itineraryData, error: itinError } = await supabaseClient
             .from('itineraries')
             .insert([{
@@ -347,29 +442,11 @@ async function saveItineraryToSupabase() {
                 total_price: totalPrice,
                 inclusions,
                 exclusions,
-                hotel_details: hotelsPayload // Saves all hotels as an array natively
-            }])
-            .select();
+                hotel_details: hotelsPayload,
+                customer_id: customerId 
+            }]);
 
         if (itinError) throw itinError;
-        
-        const newItineraryId = itineraryData[0].id;
-        const dayBlocks = daysContainer.children;
-        const daysPayload = Array.from(dayBlocks).map((block, index) => {
-            return {
-                itinerary_id: newItineraryId,
-                day_number: index + 1,
-                day_title: block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`,
-                description: block.querySelector('.day-desc-input').value || 'Details to follow.'
-            };
-        });
-
-        if (daysPayload.length > 0) {
-            const { error: daysError } = await supabaseClient
-                .from('itinerary_days')
-                .insert(daysPayload);
-            if (daysError) throw daysError;
-        }
 
         saveBtn.innerText = "✓ Saved Successfully";
         saveBtn.style.backgroundColor = "#059669"; 
@@ -381,7 +458,7 @@ async function saveItineraryToSupabase() {
 
     } catch (err) {
         console.error("Database operation failed:", err);
-        alert(`Could not sync to cloud: ${err.message || err}`);
+        alert(`Could not sync to cloud: ${err.message}`);
         saveBtn.innerText = originalText;
         saveBtn.style.opacity = "1";
     }
