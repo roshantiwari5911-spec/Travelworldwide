@@ -13,6 +13,7 @@ let activeItineraryId = null;
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
 let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge;
+let ledgerDrawer, openLedgerBtn, closeLedgerBtn; // Drawer controller hook tags
 
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-airfare', 'pkg-inclusions', 'pkg-exclusions'];
 
@@ -39,12 +40,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     savedItinerariesLedger = document.getElementById('saved-itineraries-ledger');
     clearWorkspaceBtn = document.getElementById('clear-workspace-btn');
     activeRecordBadge = document.getElementById('active-record-badge');
+    
+    ledgerDrawer = document.getElementById('ledger-drawer');
+    openLedgerBtn = document.getElementById('open-ledger-btn');
+    closeLedgerBtn = document.getElementById('close-ledger-btn');
 
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
     addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
     logoutBtn?.addEventListener('click', executeWorkspaceSignOut);
     clearWorkspaceBtn?.addEventListener('click', resetBuilderWorkspaceForm);
+
+    // FIXED: Toggle Drawer Action Event Map Triggers
+    openLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(true));
+    closeLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(false));
 
     const submitBtn = document.getElementById('login-submit-btn');
     submitBtn?.addEventListener('click', handleWorkspaceLogin);
@@ -63,17 +72,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkExistingAuthSession();
 });
 
+// NEW: Controls Sliding Animation for Drawer Element Layout Overlays
+function toggleLedgerDrawer(shouldOpen) {
+    if (shouldOpen) {
+        ledgerDrawer?.classList.add('open');
+        fetchAndRenderItinerariesLedger(); // Refresh records upon sliding open
+    } else {
+        ledgerDrawer?.classList.remove('open');
+    }
+}
+
 async function checkExistingAuthSession() {
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         if (error) throw error;
-
         if (session) {
             if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace();
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session auto-check token error parsing sequence.", err.message);
+        console.warn("Session auto-check intercept:", err.message);
     }
 }
 
@@ -90,16 +108,18 @@ async function executeWorkspaceSignOut() {
 
 function switchCrmModule(activeModule) {
     if(activeModule === 'itinerary') {
-        tabItinerary.className = "text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition";
-        tabCustomers.className = "text-xs bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-4 py-2 rounded-xl transition";
+        tabItinerary.className = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
+        tabCustomers.className = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
         moduleItinerary.classList.remove('hidden');
         moduleCustomers.classList.add('hidden');
-        fetchAndRenderItinerariesLedger();
+        openLedgerBtn.classList.remove('hidden'); // Enable ledger icon lookup access
     } else {
-        tabCustomers.className = "text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition";
-        tabItinerary.className = "text-xs bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-4 py-2 rounded-xl transition";
+        tabCustomers.className = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
+        tabItinerary.className = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
         moduleCustomers.classList.remove('hidden');
         moduleItinerary.classList.add('hidden');
+        openLedgerBtn.classList.add('hidden'); // Disable ledger button inside contacts directory grid sheet
+        toggleLedgerDrawer(false); // Safeguard close drawer overlay state
         fetchAndRenderCustomerBase(); 
     }
 }
@@ -112,7 +132,6 @@ function unlockPremiumWorkspace() {
         setTimeout(() => {
             crmWorkspace.style.opacity = "1";
             fetchAndRenderCustomerBase(); 
-            fetchAndRenderItinerariesLedger();
             resetBuilderWorkspaceForm();
         }, 50);
     }, 500);
@@ -171,7 +190,7 @@ async function fetchAndRenderItinerariesLedger() {
             const priceFormatted = itin.total_price ? `₹${Number(itin.total_price).toLocaleString('en-IN')}` : '₹0';
             
             savedItinerariesLedger.innerHTML += `
-                <div onclick="loadSavedItineraryIntoWorkspace('${itin.id}')" class="p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/40 hover:bg-white/[0.05] cursor-pointer transition flex flex-col gap-1 text-left group">
+                <div onclick="loadSavedItineraryIntoWorkspace('${itin.id}')" class="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/60 hover:bg-white/10 cursor-pointer transition flex flex-col gap-1 text-left group mb-2">
                     <div class="font-medium text-white group-hover:text-indigo-300 transition truncate">${itin.title}</div>
                     <div class="flex justify-between items-center text-[11px] text-gray-400">
                         <span>${itin.destination}</span>
@@ -182,7 +201,7 @@ async function fetchAndRenderItinerariesLedger() {
             `;
         });
     } catch (err) {
-        console.error("Ledger rendering error:", err);
+        console.error("Ledger acquisition failed:", err);
     }
 }
 
@@ -264,10 +283,12 @@ async function loadSavedItineraryIntoWorkspace(id) {
         }
 
         updateLivePreview();
+        toggleFlightLeg2(false); // Auto close sidebar drawer smoothly once content loads inside fields
+        toggleLedgerDrawer(false); // Close drawer overlay
         document.getElementById('pkg-title').scrollIntoView({ behavior: 'smooth' });
 
     } catch (err) {
-        alert(`Could not parse loaded layout: ${err.message}`);
+        alert(`Could not load itinerary data payload: ${err.message}`);
     }
 }
 
@@ -464,6 +485,13 @@ function removeFlightSectorBlock(id) {
     document.getElementById(`flight-block-${id}`)?.remove();
     updateLivePreview();
 }
+
+// Global scope mapping hooks to allow inside dynamic inline onclick components execution loops
+window.toggleFlightLeg2 = toggleFlightLeg2;
+window.removeFlightSectorBlock = removeFlightSectorBlock;
+window.removeHotelStayBlock = removeHotelStayBlock;
+window.removeItineraryDay = removeItineraryDay;
+window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
 
 function toggleFlightLeg2(id) {
     const block = document.getElementById(`flight-block-${id}`);
@@ -780,7 +808,6 @@ function generateProfessionalPDF() {
     printWindow.document.close();
 }
 
-// FIXED: Handles dynamic conditional branching for records inserting vs inline updates
 async function saveItineraryToSupabase() {
     const saveBtn = document.getElementById('save-btn');
     const originalText = saveBtn.innerText;
@@ -858,18 +885,10 @@ async function saveItineraryToSupabase() {
 
     try {
         let dbResult;
-        
         if (activeItineraryId) {
-            // Edit Mode: Update existing record row string match
-            dbResult = await supabaseClient
-                .from('itineraries')
-                .update(payload)
-                .eq('id', activeItineraryId);
+            dbResult = await supabaseClient.from('itineraries').update(payload).eq('id', activeItineraryId);
         } else {
-            // New Mode: Append a completely fresh database row row tracking item block
-            dbResult = await supabaseClient
-                .from('itineraries')
-                .insert([payload]);
+            dbResult = await supabaseClient.from('itineraries').insert([payload]);
         }
 
         if (dbResult.error) throw dbResult.error;
@@ -877,7 +896,7 @@ async function saveItineraryToSupabase() {
         saveBtn.innerText = "✓ Synced to CRM";
         saveBtn.style.backgroundColor = "#059669"; 
         
-        await fetchAndRenderItinerariesLedger(); // Refresh the sidebar listings ledger right away
+        await fetchAndRenderItinerariesLedger(); 
 
         setTimeout(() => {
             saveBtn.innerText = originalText;
