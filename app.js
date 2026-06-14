@@ -6,9 +6,9 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
 
 let dayCount = 0;
-let addDayBtn, daysContainer, previewPane, loginGate, crmWorkspace, loginForm;
+let addDayBtn, daysContainer, previewPane, loginGate, crmWorkspace;
 
-// Updated core tracking arrays to include our new inclusions and exclusions inputs
+// Track all inputs to update the premium layout preview panel in real-time
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-inclusions', 'pkg-exclusions'];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,10 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
     previewPane = document.getElementById('pdf-preview-pane');
     loginGate = document.getElementById('login-gate');
     crmWorkspace = document.getElementById('crm-workspace');
-    loginForm = document.getElementById('login-form');
 
-    // Wire up the authentication submission gate
-    loginForm?.addEventListener('submit', handleWorkspaceLogin);
+    // Fixed: Now listening directly to the button click to bypass traditional form reloads
+    const submitBtn = document.getElementById('login-submit-btn');
+    submitBtn?.addEventListener('click', handleWorkspaceLogin);
 
     inputs.forEach(id => {
         document.getElementById(id)?.addEventListener('input', updateLivePreview);
@@ -46,10 +46,16 @@ function unlockPremiumWorkspace() {
 
 // Processing pipeline for secure workspace access
 async function handleWorkspaceLogin(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const submitBtn = document.getElementById('login-submit-btn');
+
+    if (!email || !password) {
+        alert("Please fill out both the email and password fields.");
+        return;
+    }
 
     submitBtn.innerText = "Verifying Credentials...";
     submitBtn.disabled = true;
@@ -121,7 +127,6 @@ function updateLivePreview() {
     const vehicle = document.getElementById('pkg-vehicle').value || "---";
     const price = document.getElementById('pkg-price').value || "0";
 
-    // Split textareas by lines to map dynamic bullet lists cleanly into the PDF layout
     const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
     const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
 
@@ -135,4 +140,150 @@ function updateLivePreview() {
     const dayBlocks = daysContainer.children;
     Array.from(dayBlocks).forEach((block, index) => {
         const dTitle = block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`;
-        const dDesc = block.querySelector('.day
+        const dDesc = block.querySelector('.day-desc-input').value || 'Excursion details to follow.';
+        daysHtml += `
+            <div style="margin-bottom: 24px; page-break-inside: avoid;">
+                <h4 style="font-size: 14px; font-weight: 700; color: #1e1b4b; margin: 0 0 4px 0;">Day ${index + 1}: ${dTitle}</h4>
+                <p style="font-size: 12px; color: #475569; margin: 0; line-height: 1.6; text-align: justify;">${dDesc}</p>
+            </div>
+        `;
+    });
+
+    previewPane.innerHTML = `
+        <div id="printable-pdf-area" style="padding: 10px; font-family: -apple-system, sans-serif; color: #1e293b;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
+                <div>
+                    <h2 style="font-size: 22px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
+                    <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; tracking: 1px;">Boutique Curated Quotation</p>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.4;">
+                    <p style="margin:0; font-weight: 600; color: #334155;">salestravelworldwide@gmail.com</p>
+                    <p style="margin:0;">+91 88926 89595</p>
+                </div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
+                <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
+                <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
+                <div><strong style="color: #475569;">Departure Date:</strong> <span style="color: #0f172a; font-weight: 500;">${date}</span></div>
+                <div><strong style="color: #475569;">Total Travelers:</strong> <span style="color: #0f172a; font-weight: 500;">${pax} Adults</span></div>
+                <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
+            </div>
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 16px;">Day-Wise Details</h3>
+                ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:12px;">No days added yet.</p>'}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
+                <div>
+                    <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
+                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.5;">
+                        ${incHtml || '<li>Standard inclusions applied</li>'}
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin: 0 0 8px 0;">✕ Exclusions</h4>
+                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.5;">
+                        ${excHtml || '<li>Standard exclusions applied</li>'}
+                    </ul>
+                </div>
+            </div>
+            <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
+                <div>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Total Net Investment</span>
+                    <span style="font-size: 11px; color: #cbd5e1;">All inclusive of local government levies</span>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #34d399;">
+                    ₹${Number(price).toLocaleString('en-IN')}/-
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function generateProfessionalPDF() {
+    const element = document.getElementById('printable-pdf-area');
+    const title = document.getElementById('pkg-title').value || "Quotation";
+    const options = {
+        margin:       [15, 15, 15, 15],
+        filename:     `${title.replace(/\s+/g, '_')}_TravelWorldwide.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(options).from(element).save();
+}
+
+async function saveItineraryToSupabase() {
+    const saveBtn = document.getElementById('save-btn');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = "Saving to Cloud...";
+    saveBtn.style.opacity = "0.6";
+
+    const title = document.getElementById('pkg-title').value;
+    const destination = document.getElementById('pkg-destination').value;
+    const startDate = document.getElementById('pkg-date').value || null;
+    const numberOfPeople = parseInt(document.getElementById('pkg-pax').value) || 1;
+    const vehicleUsed = document.getElementById('pkg-vehicle').value;
+    const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
+
+    const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
+    const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
+    const inclusions = inclusionsText.split('\n').filter(item => item.trim() !== "");
+    const exclusions = exclusionsText.split('\n').filter(item => item.trim() !== "");
+
+    if (!title || !destination) {
+        alert("Please provide at least a Title and Destination to save this quotation.");
+        saveBtn.innerText = originalText;
+        saveBtn.style.opacity = "1";
+        return;
+    }
+
+    try {
+        const { data: itineraryData, error: itinError } = await supabase
+            .from('itineraries')
+            .insert([{
+                title,
+                destination,
+                start_date: startDate,
+                number_of_people: numberOfPeople,
+                vehicle_used: vehicleUsed,
+                total_price: totalPrice,
+                inclusions,
+                exclusions
+            }])
+            .select();
+
+        if (itinError) throw itinError;
+        
+        const newItineraryId = itineraryData[0].id;
+        const dayBlocks = daysContainer.children;
+        const daysPayload = Array.from(dayBlocks).map((block, index) => {
+            return {
+                itinerary_id: newItineraryId,
+                day_number: index + 1,
+                day_title: block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`,
+                description: block.querySelector('.day-desc-input').value || 'Details to follow.'
+            };
+        });
+
+        if (daysPayload.length > 0) {
+            const { error: daysError } = await supabase
+                .from('itinerary_days')
+                .insert(daysPayload);
+            if (daysError) throw daysError;
+        }
+
+        saveBtn.innerText = "✓ Saved Successfully";
+        saveBtn.style.backgroundColor = "#059669"; 
+        setTimeout(() => {
+            saveBtn.innerText = originalText;
+            saveBtn.style.backgroundColor = ""; 
+            saveBtn.style.opacity = "1";
+        }, 2500);
+
+    } catch (err) {
+        console.error("Database operation failed:", err);
+        alert(`Could not sync to cloud: ${err.message || err}`);
+        saveBtn.innerText = originalText;
+        saveBtn.style.opacity = "1";
+    }
+}
