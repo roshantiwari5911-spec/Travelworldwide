@@ -78,9 +78,9 @@
     </div>
 
     <!-- MAIN CRM SYSTEM DASHBOARD ENVIRONMENT -->
-    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl hidden-workspace opacity-0 premium-transition z-50">
+    <main id="crm-workspace" class="w-full max-w-[90rem] w-full glass-panel rounded-3xl p-6 md:p-10 shadow-2xl hidden-workspace opacity-0 premium-transition z-50">
         
-        <!-- Navigation Header with Integrated Log Out Option -->
+        <!-- Navigation Header -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-8 gap-4">
             <div>
                 <h1 class="text-2xl font-medium tracking-tight text-white">Travel World Wide CRM</h1>
@@ -98,18 +98,35 @@
                     <p class="font-medium text-gray-400">salestravelworldwide@gmail.com</p>
                     <p>+91 88926 89595</p>
                 </div>
-                <!-- NEW: Premium Minimalist Logout Button Element -->
                 <button id="logout-btn" class="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/20 text-[11px] font-medium px-3 py-2 rounded-xl transition duration-300 uppercase tracking-wider">
                     Sign Out
                 </button>
             </div>
         </header>
 
-        <!-- MODULE 1: ITINERARY CONSOLE -->
-        <div id="module-itinerary" class="grid grid-cols-1 lg:grid-cols-2 gap-8 transition-all duration-300">
-            <section class="space-y-6">
+        <!-- MODULE 1: ITINERARY ENVIRONMENT (EXPANDED TO THREE COLUMNS) -->
+        <div id="module-itinerary" class="grid grid-cols-1 xl:grid-cols-4 gap-6 transition-all duration-300">
+            
+            <!-- SUB-SECTION A: CRM SAVED ITINERARIES LEDGER (1 Column) -->
+            <div class="xl:col-span-1 bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col max-h-[1000px] overflow-hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Saved Cloud Records</h3>
+                    <button id="clear-workspace-btn" class="text-[10px] text-indigo-400 hover:underline">New Form</button>
+                </div>
+                <!-- Dynamic Ledger List Hook Container -->
+                <div id="saved-itineraries-ledger" class="space-y-2 overflow-y-auto flex-1 pr-1 text-xs">
+                    <div class="text-gray-500 italic py-2">Loading cloud records...</div>
+                </div>
+            </div>
+
+            <!-- SUB-SECTION B: BUILDER WORKSPACE INPUT FORM (2 Columns) -->
+            <div class="xl:col-span-2 space-y-6">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-lg font-medium text-white/90">Create New Quotation</h2>
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-lg font-medium text-white/90">Quotation Builder</h2>
+                        <!-- Hidden badge that lights up if updating an existing record -->
+                        <span id="active-record-badge" class="hidden text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">Editing Mode</span>
+                    </div>
                     <div class="w-48 text-left">
                         <select id="pkg-customer-select" class="w-full rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none transition">
                             <option value="">-- Link Client Profile --</option>
@@ -202,12 +219,13 @@
                         <button id="export-btn" class="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition">Export Premium PDF</button>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col">
+            <!-- SUB-SECTION C: LIVE PREVIEW DRAWER (1 Column) -->
+            <div class="xl:col-span-1 flex flex-col">
                 <h2 class="text-lg font-medium text-white/90 mb-6">Live Premium Preview</h2>
-                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-8 min-h-[600px] shadow-inner text-sm space-y-6"></div>
-            </section>
+                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-6 min-h-[600px] max-h-[1000px] overflow-y-auto shadow-inner text-sm space-y-6"></div>
+            </div>
         </div>
 
         <!-- MODULE 2: CUSTOMER DIRECTORY -->
@@ -254,6 +272,7 @@
         </div>
     </main>
 
+    <!-- HIGH-FIDELITY PARALLAX SIMULATION SCRIPT -->
     <script>
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
