@@ -13,7 +13,7 @@ let activeItineraryId = null;
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
 let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge;
-let ledgerDrawer, openLedgerBtn, closeLedgerBtn; // Drawer controller hook tags
+let ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
 
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-airfare', 'pkg-inclusions', 'pkg-exclusions'];
 
@@ -51,7 +51,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     logoutBtn?.addEventListener('click', executeWorkspaceSignOut);
     clearWorkspaceBtn?.addEventListener('click', resetBuilderWorkspaceForm);
 
-    // FIXED: Toggle Drawer Action Event Map Triggers
     openLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(true));
     closeLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(false));
 
@@ -72,11 +71,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkExistingAuthSession();
 });
 
-// NEW: Controls Sliding Animation for Drawer Element Layout Overlays
 function toggleLedgerDrawer(shouldOpen) {
     if (shouldOpen) {
         ledgerDrawer?.classList.add('open');
-        fetchAndRenderItinerariesLedger(); // Refresh records upon sliding open
+        fetchAndRenderItinerariesLedger(); 
     } else {
         ledgerDrawer?.classList.remove('open');
     }
@@ -91,7 +89,7 @@ async function checkExistingAuthSession() {
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session auto-check intercept:", err.message);
+        console.warn("Session status check parsed.");
     }
 }
 
@@ -112,14 +110,14 @@ function switchCrmModule(activeModule) {
         tabCustomers.className = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
         moduleItinerary.classList.remove('hidden');
         moduleCustomers.classList.add('hidden');
-        openLedgerBtn.classList.remove('hidden'); // Enable ledger icon lookup access
+        if(openLedgerBtn) openLedgerBtn.style.display = 'flex';
     } else {
         tabCustomers.className = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
         tabItinerary.className = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
         moduleCustomers.classList.remove('hidden');
         moduleItinerary.classList.add('hidden');
-        openLedgerBtn.classList.add('hidden'); // Disable ledger button inside contacts directory grid sheet
-        toggleLedgerDrawer(false); // Safeguard close drawer overlay state
+        if(openLedgerBtn) openLedgerBtn.style.display = 'none';
+        toggleLedgerDrawer(false); 
         fetchAndRenderCustomerBase(); 
     }
 }
@@ -201,7 +199,7 @@ async function fetchAndRenderItinerariesLedger() {
             `;
         });
     } catch (err) {
-        console.error("Ledger acquisition failed:", err);
+        console.error("Ledger mapping failure:", err);
     }
 }
 
@@ -283,8 +281,7 @@ async function loadSavedItineraryIntoWorkspace(id) {
         }
 
         updateLivePreview();
-        toggleFlightLeg2(false); // Auto close sidebar drawer smoothly once content loads inside fields
-        toggleLedgerDrawer(false); // Close drawer overlay
+        toggleLedgerDrawer(false); 
         document.getElementById('pkg-title').scrollIntoView({ behavior: 'smooth' });
 
     } catch (err) {
@@ -402,7 +399,7 @@ async function onboardNewCustomerRecord() {
 function addFlightSectorBlock() {
     flightCount++;
     const flightBlock = document.createElement('div');
-    flightBlock.className = 'bg-white/5 border border-white/5 p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    flightBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
     flightBlock.id = `flight-block-${flightCount}`;
     
     flightBlock.innerHTML = `
@@ -411,67 +408,67 @@ function addFlightSectorBlock() {
             <button type="button" onclick="removeFlightSectorBlock(${flightCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
         </div>
         <div class="space-y-3 text-xs">
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Flight Number</label>
-                    <input type="text" placeholder="e.g., TG-318" class="fl-num w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="e.g., TG-318" class="fl-num w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Route String</label>
-                    <input type="text" placeholder="e.g., MAA - BKK" class="fl-route w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="e.g., MAA - BKK" class="fl-route w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Duration</label>
-                    <input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span>
-                    <input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    <input type="text" placeholder="Time" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time (e.g., 23:45)" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
                 <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Arrival</span>
-                    <input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    <input type="text" placeholder="Time" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time (e.g., 04:30 +1)" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
             </div>
 
             <div class="pt-2 border-t border-white/5">
                 <label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer">
                     <input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">
-                    Include Connection / 2nd Leg Configuration
+                    Include Connection / 2nd Leg
                 </label>
             </div>
 
             <div id="flight-leg2-container-${flightCount}" class="hidden pt-3 border-t border-white/10 space-y-3 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/10">
                 <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Connecting Leg 2 Specifications</span>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                         <label class="block text-[9px] text-gray-400 uppercase mb-1">Flight Number (Leg 2)</label>
-                        <input type="text" placeholder="e.g., TG-123" class="fl-num2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="e.g., TG-123" class="fl-num2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                     </div>
                     <div>
                         <label class="block text-[9px] text-gray-400 uppercase mb-1">Route (Leg 2)</label>
-                        <input type="text" placeholder="e.g., BKK - HKT" class="fl-route2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="e.g., BKK - HKT" class="fl-route2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                     </div>
                     <div>
                         <label class="block text-[9px] text-gray-400 uppercase mb-1">Duration (Leg 2)</label>
-                        <input type="text" placeholder="e.g., 1h 20m" class="fl-duration2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="e.g., 1h 20m" class="fl-duration2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div class="space-y-1">
                         <label class="block text-[9px] text-gray-400 uppercase">Departure (Leg 2)</label>
-                        <input type="date" class="fl-dep-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                        <input type="text" placeholder="Time" class="fl-dep-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="date" class="fl-dep-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="Time" class="fl-dep-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                     </div>
                     <div class="space-y-1">
                         <label class="block text-[9px] text-gray-400 uppercase">Arrival (Leg 2)</label>
-                        <input type="date" class="fl-arr-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                        <input type="text" placeholder="Time" class="fl-arr-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="date" class="fl-arr-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="Time" class="fl-arr-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                     </div>
                 </div>
             </div>
@@ -486,7 +483,6 @@ function removeFlightSectorBlock(id) {
     updateLivePreview();
 }
 
-// Global scope mapping hooks to allow inside dynamic inline onclick components execution loops
 window.toggleFlightLeg2 = toggleFlightLeg2;
 window.removeFlightSectorBlock = removeFlightSectorBlock;
 window.removeHotelStayBlock = removeHotelStayBlock;
@@ -509,7 +505,7 @@ function toggleFlightLeg2(id) {
 function addHotelStayBlock() {
     hotelCount++;
     const hotelBlock = document.createElement('div');
-    hotelBlock.className = 'bg-white/5 border border-white/5 p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    hotelBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
     hotelBlock.id = `hotel-block-${hotelCount}`;
     
     hotelBlock.innerHTML = `
@@ -519,18 +515,18 @@ function addHotelStayBlock() {
         </div>
         <div class="space-y-3">
             <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-3 gap-1.5">
                 <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Check-In</label>
-                    <input type="date" class="hotel-in w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none text-white" oninput="updateLivePreview()">
+                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Check-In</label>
+                    <input type="date" class="hotel-in w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
                 </div>
                 <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Check-Out</label>
-                    <input type="date" class="hotel-out w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none text-white" oninput="updateLivePreview()">
+                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Check-Out</label>
+                    <input type="date" class="hotel-out w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
                 </div>
                 <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Nights</label>
-                    <input type="number" placeholder="2" class="hotel-nights w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] focus:outline-none text-white" oninput="updateLivePreview()">
+                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Nights</label>
+                    <input type="number" placeholder="2" class="hotel-nights w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
                 </div>
             </div>
         </div>
@@ -547,7 +543,7 @@ function removeHotelStayBlock(id) {
 function addItineraryDay() {
     dayCount++;
     const dayBlock = document.createElement('div');
-    dayBlock.className = 'bg-white/5 border border-white/5 p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    dayBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
     dayBlock.id = `day-block-${dayCount}`;
     
     dayBlock.innerHTML = `
@@ -905,7 +901,7 @@ async function saveItineraryToSupabase() {
         }, 2500);
 
     } catch (err) {
-        console.error("Database fault:", err);
+        console.error("Database operation error sequence:", err);
         alert(`Could not sync to cloud: ${err.message}`);
         saveBtn.innerText = originalText;
         saveBtn.style.opacity = "1";
