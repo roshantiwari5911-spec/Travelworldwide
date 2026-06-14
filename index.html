@@ -51,7 +51,7 @@
         <h2 class="text-2xl font-semibold tracking-tight text-white mb-2">Travel World Wide</h2>
         <p class="text-xs text-gray-400 mb-6">Internal CRM System Authentication</p>
         
-        <form id="login-form" class="space-y-4 text-left">
+        <form id="login-form" class="space-y-4 text-left" onsubmit="return false;">
             <div>
                 <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
                 <input type="email" id="login-email" required placeholder="name@domain.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
@@ -60,7 +60,7 @@
                 <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Password</label>
                 <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
             </div>
-            <button type="submit" id="login-submit-btn" class="w-full bg-white text-black font-semibold py-3 rounded-xl hover:bg-gray-200 transition mt-2">
+            <button type="button" id="login-submit-btn" class="w-full bg-white text-black font-semibold py-3 rounded-xl hover:bg-gray-200 transition mt-2">
                 Sign In to Workspace
             </button>
         </form>
@@ -87,4 +87,110 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Package Title</label>
-                        <input type="text" id="pkg-title" placeholder="e.g., 4 Nights Luxury Escape to Maldives" class="w-full bg-
+                        <input type="text" id="pkg-title" placeholder="e.g., 4 Nights Luxury Escape to Maldives" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Destination</label>
+                            <input type="text" id="pkg-destination" placeholder="Maldives" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Travel Date</label>
+                            <input type="date" id="pkg-date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
+                            <input type="number" id="pkg-pax" placeholder="2" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Vehicle Standard</label>
+                            <input type="text" id="pkg-vehicle" placeholder="Private Innova Crysta (AC)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-medium text-white/80">Day-Wise Itinerary</h3>
+                        <button type="button" id="add-day-btn" class="text-xs bg-white text-black font-medium px-3 py-1.5 rounded-lg hover:bg-gray-200 transition">
+                            + Add Next Day
+                        </button>
+                    </div>
+                    <div id="days-container" class="space-y-4"></div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Inclusions (One per line)</label>
+                        <textarea id="pkg-inclusions" rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()">Premium accommodations as detailed above&#10;All airport transfers and local sightseeing via private AC vehicle&#10;Daily gourmet breakfast at the hotel properties</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Exclusions (One per line)</label>
+                        <textarea id="pkg-exclusions" rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()">International or domestic flight tickets&#10;Personal laundry, tips, and items outside mentioned meals&#10;Travel insurance or emergency documentation support</textarea>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Total Package Price (INR)</label>
+                        <input type="number" id="pkg-price" placeholder="₹1,50,000" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition">
+                    </div>
+
+                    <div class="flex gap-4 pt-2">
+                        <button id="save-btn" class="flex-1 bg-white/10 border border-white/20 text-white font-medium py-3 rounded-xl hover:bg-white/20 transition">
+                            Save to CRM
+                        </button>
+                        <button id="export-btn" class="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition">
+                            Export Premium PDF
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col">
+                <h2 class="text-lg font-medium text-white/90 mb-6">Live Premium Preview</h2>
+                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-8 min-h-[600px] shadow-inner text-sm space-y-6">
+                    <p class="text-gray-400 italic text-center mt-24">Loading custom workspace assets...</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let mouse = { x: undefined, y: undefined };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(mouse.x && mouse.y) {
+                let gradient = ctx.createRadialGradient(mouse.x, mouse.y, 10, mouse.x, mouse.y, 450);
+                gradient.addColorStop(0, 'rgba(99, 102, 241, 0.08)');
+                gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.03)');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
