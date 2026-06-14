@@ -154,7 +154,6 @@ async function onboardNewCustomerRecord() {
     addCustSubmitBtn.disabled = true;
 
     try {
-        // EXCLUSIVELY targets the exact columns present in your Supabase structure
         const { error } = await supabaseClient
             .from('customers')
             .insert([{ full_name: fullName, email: email, phone: mobile }]);
@@ -164,7 +163,6 @@ async function onboardNewCustomerRecord() {
         document.getElementById('cust-name').value = '';
         document.getElementById('cust-email').value = '';
         document.getElementById('cust-mobile').value = '';
-        if(document.getElementById('cust-company')) document.getElementById('cust-company').value = '';
 
         addCustSubmitBtn.innerText = "✓ Record Saved!";
         addCustSubmitBtn.style.backgroundColor = "#059669";
@@ -267,7 +265,8 @@ function formatPremiumDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('en-US', opts);
 }
 
-function updateLivePreview() {
+// Fixed compilation data logic function
+function compileItineraryHTML() {
     const title = document.getElementById('pkg-title').value || "Untitled Premium Package";
     const dest = document.getElementById('pkg-destination').value || "---";
     const date = document.getElementById('pkg-date').value || "---";
@@ -284,7 +283,7 @@ function updateLivePreview() {
         const hNights = block.querySelector('.hotel-nights').value || "0";
 
         hotelsHtml += `
-            <tr style="border-bottom: 1px solid #f1f5f9; font-size: 11.5px; color: #334155;">
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11.5px; color: #334155;">
                 <td style="padding: 10px 8px; font-weight: 600; color: #0f172a;">${hName}</td>
                 <td style="padding: 10px 8px; text-align: center;">${hIn}</td>
                 <td style="padding: 10px 8px; text-align: center;">${hOut}</td>
@@ -298,8 +297,8 @@ function updateLivePreview() {
     const inclusionsArray = inclusionsText.split('\n').filter(item => item.trim() !== "");
     const exclusionsArray = exclusionsText.split('\n').filter(item => item.trim() !== "");
 
-    let incHtml = inclusionsArray.map(item => `<li>${item}</li>`).join('');
-    let excHtml = exclusionsArray.map(item => `<li>${item}</li>`).join('');
+    let incHtml = inclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
+    let excHtml = exclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
 
     let daysHtml = '';
     const dayBlocks = daysContainer.children;
@@ -308,17 +307,17 @@ function updateLivePreview() {
         const dDesc = block.querySelector('.day-desc-input').value || 'Excursion details to follow.';
         daysHtml += `
             <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                <h4 style="font-size: 13.5px; font-weight: 700; color: #1e1b4b; margin: 0 0 4px 0;">Day ${index + 1}: ${dTitle}</h4>
+                <h4 style="font-size: 13.5px; font-weight: 700; color: #1e1b4b; margin: 0 0 6px 0;">Day ${index + 1}: ${dTitle}</h4>
                 <p style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.6; text-align: justify;">${dDesc}</p>
             </div>
         `;
     });
 
-    previewPane.innerHTML = `
-        <div id="printable-pdf-area" style="padding: 10px; font-family: -apple-system, sans-serif; color: #1e293b;">
+    return `
+        <div style="padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; background: #ffffff;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
                 <div>
-                    <h2 style="font-size: 22px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
+                    <h2 style="font-size: 24px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
                     <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; tracking: 1px;">Boutique Curated Quotation</p>
                 </div>
                 <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.4;">
@@ -356,14 +355,14 @@ function updateLivePreview() {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
-                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.5;">
-                        ${incHtml}
+                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.6;">
+                        ${incHtml || '<li>Standard inclusions applied</li>'}
                     </ul>
                 </div>
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin: 0 0 8px 0;">✕ Exclusions</h4>
-                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.5;">
-                        ${excHtml}
+                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.6;">
+                        ${excHtml || '<li>Standard exclusions applied</li>'}
                     </ul>
                 </div>
             </div>
@@ -380,17 +379,42 @@ function updateLivePreview() {
     `;
 }
 
+function updateLivePreview() {
+    if(previewPane) {
+        previewPane.innerHTML = compileItineraryHTML();
+    }
+}
+
+// FIXED: Master Background Isolation Printer Engine
 function generateProfessionalPDF() {
-    const element = document.getElementById('printable-pdf-area');
     const title = document.getElementById('pkg-title').value || "Quotation";
+    
+    // 1. Instantiate an isolated processing node outside the viewport container
+    const workerContainer = document.createElement('div');
+    workerContainer.style.position = 'absolute';
+    workerContainer.style.left = '-9999px';
+    workerContainer.style.top = '-9999px';
+    workerContainer.style.width = '790px'; // Lock layout viewport structure to static true A4 context sizing
+    workerContainer.innerHTML = compileItineraryHTML();
+    
+    document.body.appendChild(workerContainer);
+
     const options = {
-        margin:       [15, 15, 15, 15],
+        margin:       [12, 12, 12, 12],
         filename:     `${title.replace(/\s+/g, '_')}_TravelWorldwide.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, letterRendering: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    html2pdf().set(options).from(element).save();
+
+    // 2. Pass isolation target down through layout renderer stream channels
+    html2pdf().set(options).from(workerContainer).save().then(() => {
+        // 3. De-allocate processing workspace nodes gracefully from DOM tree context tracking
+        workerContainer.remove();
+    }).catch(err => {
+        console.error("PDF generation layout fault sequence:", err);
+        workerContainer.remove();
+    });
 }
 
 async function saveItineraryToSupabase() {
