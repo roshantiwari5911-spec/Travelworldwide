@@ -7,16 +7,19 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 
 let dayCount = 0;
 let hotelCount = 0;
-let addDayBtn, addHotelBtn, daysContainer, hotelsContainer, previewPane, loginGate, crmWorkspace;
+let flightCount = 0;
+let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
 let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn;
 
-const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-inclusions', 'pkg-exclusions'];
+const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-price', 'pkg-airfare', 'pkg-inclusions', 'pkg-exclusions'];
 
 document.addEventListener('DOMContentLoaded', () => {
     addDayBtn = document.getElementById('add-day-btn');
     addHotelBtn = document.getElementById('add-hotel-btn');
+    addFlightBtn = document.getElementById('add-flight-btn');
     daysContainer = document.getElementById('days-container');
     hotelsContainer = document.getElementById('hotels-container');
+    flightsContainer = document.getElementById('flights-container');
     previewPane = document.getElementById('pdf-preview-pane');
     loginGate = document.getElementById('login-gate');
     crmWorkspace = document.getElementById('crm-workspace');
@@ -42,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addDayBtn?.addEventListener('click', addItineraryDay);
     addHotelBtn?.addEventListener('click', addHotelStayBlock);
+    addFlightBtn?.addEventListener('click', addFlightSectorBlock);
     
     document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
@@ -70,6 +74,7 @@ function unlockPremiumWorkspace() {
         setTimeout(() => {
             crmWorkspace.style.opacity = "1";
             fetchAndRenderCustomerBase(); 
+            addFlightSectorBlock(); // Auto-populate 1 Flight form container segment
             addHotelStayBlock(); 
             addItineraryDay();    
         }, 50);
@@ -182,6 +187,108 @@ async function onboardNewCustomerRecord() {
     }
 }
 
+// NEW: Dynamic Flight Block Generator with optional second leg toggle
+function addFlightSectorBlock() {
+    flightCount++;
+    const flightBlock = document.createElement('div');
+    flightBlock.className = 'bg-white/5 border border-white/5 p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    flightBlock.id = `flight-block-${flightCount}`;
+    
+    flightBlock.innerHTML = `
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Flight Sector Route ${flightCount}</span>
+            <button type="button" onclick="removeFlightSectorBlock(${flightCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
+        </div>
+        <div class="space-y-3 text-xs">
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Flight Number</label>
+                    <input type="text" placeholder="e.g., TG-318" class="fl-num w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Route String</label>
+                    <input type="text" placeholder="e.g., MAA - BKK" class="fl-route w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Duration</label>
+                    <input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span>
+                    <input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time (e.g., 23:45)" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Arrival</span>
+                    <input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time (e.g., 04:30 +1)" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+            </div>
+
+            <!-- Leg 2 Connection Interface Option Toggle -->
+            <div class="pt-2 border-t border-white/5">
+                <label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer">
+                    <input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">
+                    Include Connection / 2nd Leg Configuration
+                </label>
+            </div>
+
+            <div id="flight-leg2-container-${flightCount}" class="hidden pt-3 border-t border-white/10 space-y-3 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/10">
+                <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Connecting Leg 2 Specifications</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Flight Number (Leg 2)</label>
+                        <input type="text" placeholder="e.g., TG-123" class="fl-num2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Route (Leg 2)</label>
+                        <input type="text" placeholder="e.g., BKK - HKT" class="fl-route2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Duration (Leg 2)</label>
+                        <input type="text" placeholder="e.g., 1h 20m" class="fl-duration2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="block text-[9px] text-gray-400 uppercase">Departure (Leg 2)</label>
+                        <input type="date" class="fl-dep-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="Time" class="fl-dep-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-[9px] text-gray-400 uppercase">Arrival (Leg 2)</label>
+                        <input type="date" class="fl-arr-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="Time" class="fl-arr-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    flightsContainer.appendChild(flightBlock);
+    updateLivePreview();
+}
+
+function removeFlightSectorBlock(id) {
+    document.getElementById(`flight-block-${id}`)?.remove();
+    updateLivePreview();
+}
+
+function toggleFlightLeg2(id) {
+    const block = document.getElementById(`flight-block-${id}`);
+    const leg2Container = document.getElementById(`flight-leg2-container-${id}`);
+    const checkbox = block.querySelector('.fl-has-leg2');
+    
+    if (checkbox.checked) {
+        leg2Container.classList.remove('hidden');
+    } else {
+        leg2Container.classList.add('hidden');
+    }
+    updateLivePreview();
+}
+
 function addHotelStayBlock() {
     hotelCount++;
     const hotelBlock = document.createElement('div');
@@ -260,7 +367,7 @@ function reindexDays() {
 }
 
 function formatPremiumDate(dateStr) {
-    if (!dateStr) return "---";
+    if (!dateStr || dateStr === "---") return "---";
     const opts = { day: 'numeric', month: 'short', year: 'numeric' };
     return new Date(dateStr).toLocaleDateString('en-US', opts);
 }
@@ -272,6 +379,53 @@ function compileItineraryHTML() {
     const pax = document.getElementById('pkg-pax').value || "0";
     const vehicle = document.getElementById('pkg-vehicle').value || "---";
     const price = document.getElementById('pkg-price').value || "0";
+    const airfare = document.getElementById('pkg-airfare').value || "";
+
+    // Build Flight Blocks Layout HTML rows dynamically
+    let flightsHtml = '';
+    const flightBlocks = flightsContainer.children;
+    Array.from(flightBlocks).forEach((block) => {
+        const fNum = block.querySelector('.fl-num').value || "TBD";
+        const fRoute = block.querySelector('.fl-route').value || "---";
+        const fDur = block.querySelector('.fl-duration').value || "---";
+        const fDepD = formatPremiumDate(block.querySelector('.fl-dep-date').value);
+        const fDepT = block.querySelector('.fl-dep-time').value || "---";
+        const fArrD = formatPremiumDate(block.querySelector('.fl-arr-date').value);
+        const fArrT = block.querySelector('.fl-arr-time').value || "---";
+        const hasLeg2 = block.querySelector('.fl-has-leg2').checked;
+
+        flightsHtml += `
+            <div style="border-left: 3px solid #06b6d4; padding-left: 12px; margin-bottom: 14px; font-size: 11.5px;">
+                <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">Sector Segment: ${fRoute} (${fNum})</div>
+                <div style="color: #475569;">
+                    <strong>Departure:</strong> ${fDepD} @ ${fDepT} &nbsp;|&nbsp; 
+                    <strong>Arrival:</strong> ${fArrD} @ ${fArrT} &nbsp;|&nbsp; 
+                    <strong>Duration:</strong> ${fDur}
+                </div>
+            </div>
+        `;
+
+        if (hasLeg2) {
+            const fNum2 = block.querySelector('.fl-num2').value || "TBD";
+            const fRoute2 = block.querySelector('.fl-route2').value || "---";
+            const fDur2 = block.querySelector('.fl-duration2').value || "---";
+            const fDepD2 = formatPremiumDate(block.querySelector('.fl-dep-date2').value);
+            const fDepT2 = block.querySelector('.fl-dep-time2').value || "---";
+            const fArrD2 = formatPremiumDate(block.querySelector('.fl-arr-date2').value);
+            const fArrT2 = block.querySelector('.fl-arr-time2').value || "---";
+
+            flightsHtml += `
+                <div style="border-left: 3px dashed #a5f3fc; padding-left: 12px; margin-left: 15px; margin-bottom: 14px; font-size: 11px; background: #f8fafc; padding-top: 4px; padding-bottom: 4px;">
+                    <div style="font-weight: 700; color: #0369a1; margin-bottom: 2px;">Connecting Leg 2: ${fRoute2} (${fNum2})</div>
+                    <div style="color: #475569;">
+                        <strong>Departure:</strong> ${fDepD2} @ ${fDepT2} &nbsp;|&nbsp; 
+                        <strong>Arrival:</strong> ${fArrD2} @ ${fArrT2} &nbsp;|&nbsp; 
+                        <strong>Duration:</strong> ${fDur2}
+                    </div>
+                </div>
+            `;
+        }
+    });
 
     let hotelsHtml = '';
     const hotelBlocks = hotelsContainer.children;
@@ -312,8 +466,25 @@ function compileItineraryHTML() {
         `;
     });
 
+    // Build Airfare Quote Display Section block conditionally
+    let airfareBlockHtml = '';
+    if (airfare && Number(airfare) > 0) {
+        airfareBlockHtml = `
+            <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 14px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
+                <div>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #0f766e; font-weight:700; display:block;">Estimated Flight Fare Pricing</span>
+                    <span style="font-size: 11px; color: #115e59;">Subject to direct live airline availability indices upon booking</span>
+                </div>
+                <div style="font-size: 16px; font-weight: 700; color: #0d9488;">
+                    ₹${Number(airfare).toLocaleString('en-IN')}/-
+                </div>
+            </div>
+        `;
+    }
+
     return `
         <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
+            <!-- Branding Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
                 <div>
                     <h2 style="font-size: 24px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
@@ -324,6 +495,8 @@ function compileItineraryHTML() {
                     <p style="margin:0;">+91 88926 89595</p>
                 </div>
             </div>
+
+            <!-- Profile Summary Overview -->
             <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
                 <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
                 <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
@@ -331,6 +504,19 @@ function compileItineraryHTML() {
                 <div><strong style="color: #475569;">Total Travelers:</strong> <span style="color: #0f172a; font-weight: 500;">${pax} Adults</span></div>
                 <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
             </div>
+
+            <!-- Dynamic Flight Sectors Section -->
+            ${flightBlocks.length > 0 ? `
+            <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                <h3 style="font-size: 12px; font-weight: 800; color: #0891b2; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Flight Routing & Logistics</h3>
+                ${flightsHtml}
+            </div>
+            ` : ''}
+
+            <!-- Separate Airfare Visual Frame Segment -->
+            ${airfareBlockHtml}
+
+            <!-- Stays Breakdown Table -->
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;">Premium Stays & Accommodations</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -347,10 +533,14 @@ function compileItineraryHTML() {
                     </tbody>
                 </table>
             </div>
+
+            <!-- Day Wise Details -->
             <div style="margin-bottom: 25px;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Day-Wise Details</h3>
                 ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:11px;">No itinerary days added yet.</p>'}
             </div>
+
+            <!-- Inclusions / Exclusions Tracker Block -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
@@ -365,9 +555,11 @@ function compileItineraryHTML() {
                     </ul>
                 </div>
             </div>
+
+            <!-- Main Land Package Price Block -->
             <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
                 <div>
-                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Total Net Investment</span>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Main Land Package Investment</span>
                     <span style="font-size: 11px; color: #cbd5e1;">All inclusive of boutique coordination levies</span>
                 </div>
                 <div style="font-size: 20px; font-weight: 700; color: #34d399;">
@@ -384,12 +576,9 @@ function updateLivePreview() {
     }
 }
 
-// ULTIMATE FAIL-SAFE: Uses Native Virtual Printing to completely prevent blank exports
 function generateProfessionalPDF() {
     const title = document.getElementById('pkg-title').value || "Quotation";
     const htmlContent = compileItineraryHTML();
-
-    // Open a completely clean browser sub-window context
     const printWindow = window.open('', '_blank', 'width=900,height=800');
     
     printWindow.document.write(`
@@ -400,23 +589,19 @@ function generateProfessionalPDF() {
                 body { margin: 0; background: #ffffff; }
                 @media print {
                     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .no-print { display: none; }
                 }
             </style>
         </head>
         <body>
             ${htmlContent}
             <script>
-                // Auto-execute native OS printing window once components paint completely
                 window.onload = function() {
                     window.print();
-                    // Optional: window.close(); // Closes tab automatically after print confirmation
                 };
             </script>
         </body>
         </html>
     `);
-    
     printWindow.document.close();
 }
 
@@ -433,6 +618,7 @@ async function saveItineraryToSupabase() {
     const vehicleUsed = document.getElementById('pkg-vehicle').value;
     const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
     const customerId = document.getElementById('pkg-customer-select').value || null;
+    const airfarePrice = parseFloat(document.getElementById('pkg-airfare').value) || 0;
 
     const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
     const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
@@ -446,6 +632,30 @@ async function saveItineraryToSupabase() {
             check_in: block.querySelector('.hotel-in').value || null,
             check_out: block.querySelector('.hotel-out').value || null,
             nights: parseInt(block.querySelector('.hotel-nights').value) || 0
+        };
+    });
+
+    // Extract dynamic flights information map array
+    const flightBlocks = flightsContainer.children;
+    const flightsPayload = Array.from(flightBlocks).map(block => {
+        return {
+            flight_number: block.querySelector('.fl-num').value || "TBD",
+            route: block.querySelector('.fl-route').value || "---",
+            duration: block.querySelector('.fl-duration').value || "---",
+            dep_date: block.querySelector('.fl-dep-date').value || null,
+            dep_time: block.querySelector('.fl-dep-time').value || "---",
+            arr_date: block.querySelector('.fl-arr-date').value || null,
+            arr_time: block.querySelector('.fl-arr-time').value || "---",
+            has_leg2: block.querySelector('.fl-has-leg2').checked,
+            leg2: block.querySelector('.fl-has-leg2').checked ? {
+                flight_number: block.querySelector('.fl-num2').value || "TBD",
+                route: block.querySelector('.fl-route2').value || "---",
+                duration: block.querySelector('.fl-duration2').value || "---",
+                dep_date: block.querySelector('.fl-dep-date2').value || null,
+                dep_time: block.querySelector('.fl-dep-time2').value || "---",
+                arr_date: block.querySelector('.fl-arr-date2').value || null,
+                arr_time: block.querySelector('.fl-arr-time2').value || "---"
+            } : null
         };
     });
 
@@ -469,7 +679,9 @@ async function saveItineraryToSupabase() {
                 inclusions,
                 exclusions,
                 hotel_details: hotelsPayload,
-                customer_id: customerId 
+                customer_id: customerId,
+                flight_details: flightsPayload, // Saved dynamically to your JSON matrix mapping row column
+                airfare_price: airfarePrice
             }]);
 
         if (itinError) throw itinError;
