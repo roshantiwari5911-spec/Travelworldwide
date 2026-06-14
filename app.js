@@ -89,7 +89,7 @@ async function checkExistingAuthSession() {
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session status check parsed.");
+        console.warn("Session auto-check intercepted.");
     }
 }
 
@@ -167,6 +167,7 @@ function resetBuilderWorkspaceForm() {
     updateLivePreview();
 }
 
+// FIXED: Included individual row record delete hooks cleanly inside container compilation mapping
 async function fetchAndRenderItinerariesLedger() {
     if (!savedItinerariesLedger) return;
     try {
@@ -188,18 +189,55 @@ async function fetchAndRenderItinerariesLedger() {
             const priceFormatted = itin.total_price ? `₹${Number(itin.total_price).toLocaleString('en-IN')}` : '₹0';
             
             savedItinerariesLedger.innerHTML += `
-                <div onclick="loadSavedItineraryIntoWorkspace('${itin.id}')" class="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/60 hover:bg-white/10 cursor-pointer transition flex flex-col gap-1 text-left group mb-2">
-                    <div class="font-medium text-white group-hover:text-indigo-300 transition truncate">${itin.title}</div>
-                    <div class="flex justify-between items-center text-[11px] text-gray-400">
-                        <span>${itin.destination}</span>
-                        <span class="font-mono text-emerald-400 font-semibold">${priceFormatted}</span>
+                <div class="relative group/card mb-2">
+                    <div onclick="loadSavedItineraryIntoWorkspace('${itin.id}')" class="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/60 hover:bg-white/10 cursor-pointer transition flex flex-col gap-1 text-left group">
+                        <div class="font-medium text-white group-hover:text-indigo-300 transition pr-6 truncate">${itin.title}</div>
+                        <div class="flex justify-between items-center text-[11px] text-gray-400">
+                            <span>${itin.destination}</span>
+                            <span class="font-mono text-emerald-400 font-semibold">${priceFormatted}</span>
+                        </div>
+                        <div class="text-[9px] text-gray-600 font-mono text-right mt-1">Saved: ${dateStamp}</div>
                     </div>
-                    <div class="text-[9px] text-gray-600 font-mono text-right mt-1">Saved: ${dateStamp}</div>
+                    
+                    <!-- NEW: Sleek Floating Trash/Delete Action Control -->
+                    <button onclick="deleteItineraryRecord('${itin.id}', '${itin.title.replace(/'/g, "\\'")}')" class="absolute top-3 right-3 p-1 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-80 sm:opacity-0 group-hover/card:opacity-100 transition duration-200" title="Delete Quote">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
                 </div>
             `;
         });
     } catch (err) {
-        console.error("Ledger mapping failure:", err);
+        console.error("Ledger rendering failure:", err);
+    }
+}
+
+// NEW: Verification and execution logic function to drop data records
+async function deleteItineraryRecord(id, title) {
+    // 1. Double check query parameters validation step
+    const hasConfirmed = confirm(`Are you completely sure you want to permanently delete "${title}" from the CRM cloud? This action cannot be undone.`);
+    if (!hasConfirmed) return;
+
+    try {
+        // 2. Perform direct row context drop action 
+        const { error } = await supabaseClient
+            .from('itineraries')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        // 3. Reset form state if the user dropped the specific card they were currently editing
+        if (activeItineraryId === id) {
+            resetBuilderWorkspaceForm();
+        }
+
+        // 4. Force list refresh down to the sidebar container layout
+        await fetchAndRenderItinerariesLedger();
+
+    } catch (err) {
+        alert(`Could not remove data payload record: ${err.message}`);
     }
 }
 
@@ -427,12 +465,12 @@ function addFlightSectorBlock() {
                 <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span>
                     <input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    <input type="text" placeholder="Time (e.g., 23:45)" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
                 <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Arrival</span>
                     <input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    <input type="text" placeholder="Time (e.g., 04:30 +1)" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
             </div>
 
@@ -478,30 +516,6 @@ function addFlightSectorBlock() {
     updateLivePreview();
 }
 
-function removeFlightSectorBlock(id) {
-    document.getElementById(`flight-block-${id}`)?.remove();
-    updateLivePreview();
-}
-
-window.toggleFlightLeg2 = toggleFlightLeg2;
-window.removeFlightSectorBlock = removeFlightSectorBlock;
-window.removeHotelStayBlock = removeHotelStayBlock;
-window.removeItineraryDay = removeItineraryDay;
-window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
-
-function toggleFlightLeg2(id) {
-    const block = document.getElementById(`flight-block-${id}`);
-    const leg2Container = document.getElementById(`flight-leg2-container-${id}`);
-    const checkbox = block?.querySelector('.fl-has-leg2');
-    
-    if (checkbox && checkbox.checked) {
-        leg2Container?.classList.remove('hidden');
-    } else {
-        leg2Container?.classList.add('hidden');
-    }
-    updateLivePreview();
-}
-
 function addHotelStayBlock() {
     hotelCount++;
     const hotelBlock = document.createElement('div');
@@ -535,11 +549,6 @@ function addHotelStayBlock() {
     updateLivePreview();
 }
 
-function removeHotelStayBlock(id) {
-    document.getElementById(`hotel-block-${id}`)?.remove();
-    updateLivePreview();
-}
-
 function addItineraryDay() {
     dayCount++;
     const dayBlock = document.createElement('div');
@@ -558,352 +567,4 @@ function addItineraryDay() {
     updateLivePreview();
 }
 
-function removeItineraryDay(id) {
-    const element = document.getElementById(`day-block-${id}`);
-    if (element) {
-        element.remove();
-        reindexDays();
-        updateLivePreview();
-    }
-}
-
-function reindexDays() {
-    const blocks = daysContainer ? daysContainer.children : [];
-    dayCount = blocks.length;
-    Array.from(blocks).forEach((block, index) => {
-        const currentNum = index + 1;
-        block.id = `day-block-${currentNum}`;
-        block.querySelector('span').innerText = `Day ${currentNum}`;
-        const removeBtn = block.querySelector('button');
-        if(removeBtn) removeBtn.setAttribute('onclick', `removeItineraryDay(${currentNum})`);
-    });
-}
-
-function formatPremiumDate(dateStr) {
-    if (!dateStr || dateStr === "---") return "---";
-    const opts = { day: 'numeric', month: 'short', year: 'numeric' };
-    return new Date(dateStr).toLocaleDateString('en-US', opts);
-}
-
-function compileItineraryHTML() {
-    const title = document.getElementById('pkg-title').value || "Untitled Premium Package";
-    const dest = document.getElementById('pkg-destination').value || "---";
-    const date = document.getElementById('pkg-date').value || "---";
-    const pax = document.getElementById('pkg-pax').value || "0";
-    const vehicle = document.getElementById('pkg-vehicle').value || "---";
-    const price = document.getElementById('pkg-price').value || "0";
-    const airfare = document.getElementById('pkg-airfare').value || "";
-
-    let flightsHtml = '';
-    const flightBlocks = flightsContainer ? flightsContainer.children : [];
-    Array.from(flightBlocks).forEach((block) => {
-        const fNum = block.querySelector('.fl-num').value || "TBD";
-        const fRoute = block.querySelector('.fl-route').value || "---";
-        const fDur = block.querySelector('.fl-duration').value || "---";
-        const fDepD = formatPremiumDate(block.querySelector('.fl-dep-date').value);
-        const fDepT = block.querySelector('.fl-dep-time').value || "---";
-        const fArrD = formatPremiumDate(block.querySelector('.fl-arr-date').value);
-        const fArrT = block.querySelector('.fl-arr-time').value || "---";
-        const hasLeg2 = block.querySelector('.fl-has-leg2').checked;
-
-        flightsHtml += `
-            <div style="border-left: 3px solid #06b6d4; padding-left: 12px; margin-bottom: 14px; font-size: 11.5px;">
-                <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">Sector Segment: ${fRoute} (${fNum})</div>
-                <div style="color: #475569;">
-                    <strong>Departure:</strong> ${fDepD} @ ${fDepT} &nbsp;|&nbsp; 
-                    <strong>Arrival:</strong> ${fArrD} @ ${fArrT} &nbsp;|&nbsp; 
-                    <strong>Duration:</strong> ${fDur}
-                </div>
-            </div>
-        `;
-
-        if (hasLeg2) {
-            const fNum2 = block.querySelector('.fl-num2').value || "TBD";
-            const fRoute2 = block.querySelector('.fl-route2').value || "---";
-            const fDur2 = block.querySelector('.fl-duration2').value || "---";
-            const fDepD2 = formatPremiumDate(block.querySelector('.fl-dep-date2').value);
-            const fDepT2 = block.querySelector('.fl-dep-time2').value || "---";
-            const fArrD2 = formatPremiumDate(block.querySelector('.fl-arr-date2').value);
-            const fArrT2 = block.querySelector('.fl-arr-time2').value || "---";
-
-            flightsHtml += `
-                <div style="border-left: 3px dashed #a5f3fc; padding-left: 12px; margin-left: 15px; margin-bottom: 14px; font-size: 11px; background: #f8fafc; padding-top: 4px; padding-bottom: 4px;">
-                    <div style="font-weight: 700; color: #0369a1; margin-bottom: 2px;">Connecting Leg 2: ${fRoute2} (${fNum2})</div>
-                    <div style="color: #475569;">
-                        <strong>Departure:</strong> ${fDepD2} @ ${fDepT2} &nbsp;|&nbsp; 
-                        <strong>Arrival:</strong> ${fArrD2} @ ${fArrT2} &nbsp;|&nbsp; 
-                        <strong>Duration:</strong> ${fDur2}
-                    </div>
-                </div>
-            `;
-        }
-    });
-
-    let hotelsHtml = '';
-    const hotelBlocks = hotelsContainer ? hotelsContainer.children : [];
-    Array.from(hotelBlocks).forEach((block) => {
-        const hName = block.querySelector('.hotel-name').value || "Accommodation Pending Confirmation";
-        const hIn = formatPremiumDate(block.querySelector('.hotel-in').value);
-        const hOut = formatPremiumDate(block.querySelector('.hotel-out').value);
-        const hNights = block.querySelector('.hotel-nights').value || "0";
-
-        hotelsHtml += `
-            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11.5px; color: #334155;">
-                <td style="padding: 10px 8px; font-weight: 600; color: #0f172a;">${hName}</td>
-                <td style="padding: 10px 8px; text-align: center;">${hIn}</td>
-                <td style="padding: 10px 8px; text-align: center;">${hOut}</td>
-                <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #4f46e5;">${hNights} N</td>
-            </tr>
-        `;
-    });
-
-    const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
-    const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
-    const inclusionsArray = inclusionsText.split('\n').filter(item => item.trim() !== "");
-    const exclusionsArray = exclusionsText.split('\n').filter(item => item.trim() !== "");
-
-    let incHtml = inclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
-    let excHtml = exclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
-
-    let daysHtml = '';
-    const dayBlocks = daysContainer ? daysContainer.children : [];
-    Array.from(dayBlocks).forEach((block, index) => {
-        const dTitle = block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`;
-        const dDesc = block.querySelector('.day-desc-input').value || 'Excursion details to follow.';
-        daysHtml += `
-            <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                <h4 style="font-size: 13.5px; font-weight: 700; color: #1e1b4b; margin: 0 0 6px 0;">Day ${index + 1}: ${dTitle}</h4>
-                <p style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.6; text-align: justify;">${dDesc}</p>
-            </div>
-        `;
-    });
-
-    let airfareBlockHtml = '';
-    if (airfare && Number(airfare) > 0) {
-        airfareBlockHtml = `
-            <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 14px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
-                <div>
-                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #0f766e; font-weight:700; display:block;">Estimated Flight Fare Pricing</span>
-                    <span style="font-size: 11px; color: #115e59;">Subject to direct live airline availability indices upon booking</span>
-                </div>
-                <div style="font-size: 16px; font-weight: 700; color: #0d9488;">
-                    ₹${Number(airfare).toLocaleString('en-IN')}/-
-                </div>
-            </div>
-        `;
-    }
-
-    return `
-        <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
-                <div>
-                    <h2 style="font-size: 24px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
-                    <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; tracking: 1px;">Boutique Curated Quotation</p>
-                </div>
-                <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.4;">
-                    <p style="margin:0; font-weight: 600; color: #334155;">salestravelworldwide@gmail.com</p>
-                    <p style="margin:0;">+91 88926 89595</p>
-                </div>
-            </div>
-            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
-                <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
-                <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
-                <div><strong style="color: #475569;">Departure Date:</strong> <span style="color: #0f172a; font-weight: 500;">${formatPremiumDate(date)}</span></div>
-                <div><strong style="color: #475569;">Total Travelers:</strong> <span style="color: #0f172a; font-weight: 500;">${pax} Adults</span></div>
-                <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
-            </div>
-
-            ${flightBlocks.length > 0 ? `
-            <div style="margin-bottom: 25px; page-break-inside: avoid;">
-                <h3 style="font-size: 12px; font-weight: 800; color: #0891b2; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Flight Routing & Logistics</h3>
-                ${flightsHtml}
-            </div>
-            ` : ''}
-
-            ${airfareBlockHtml}
-
-            <div style="margin-bottom: 25px; page-break-inside: avoid;">
-                <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;">Premium Stays & Accommodations</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                    <thead>
-                        <tr style="background: #f8fafc; text-align: left; color: #475569; font-weight: 700; border-bottom: 1px solid #e2e8f0;">
-                            <th style="padding: 8px;">Hotel Property Name</th>
-                            <th style="padding: 8px; text-align: center;">Check-In</th>
-                            <th style="padding: 8px; text-align: center;">Check-Out</th>
-                            <th style="padding: 8px; text-align: center;">Duration</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${hotelsHtml || '<tr><td colspan="4" style="color:#94a3b8; font-style:italic; padding:10px; font-size:11px;">No properties selected.</td></tr>'}
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-bottom: 25px;">
-                <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Day-Wise Details</h3>
-                ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:11px;">No itinerary days added yet.</p>'}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
-                <div>
-                    <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
-                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.6;">
-                        ${incHtml || '<li>Standard inclusions applied</li>'}
-                    </ul>
-                </div>
-                <div>
-                    <h4 style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin: 0 0 8px 0;">✕ Exclusions</h4>
-                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.6;">
-                        ${excHtml || '<li>Standard exclusions applied</li>'}
-                    </ul>
-                </div>
-            </div>
-            <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
-                <div>
-                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Main Land Package Investment</span>
-                    <span style="font-size: 11px; color: #cbd5e1;">All inclusive of boutique coordination levies</span>
-                </div>
-                <div style="font-size: 20px; font-weight: 700; color: #34d399;">
-                    ₹${Number(price).toLocaleString('en-IN')}/-
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function updateLivePreview() {
-    if(previewPane) {
-        previewPane.innerHTML = compileItineraryHTML();
-    }
-}
-
-function generateProfessionalPDF() {
-    const title = document.getElementById('pkg-title').value || "Quotation";
-    const htmlContent = compileItineraryHTML();
-    const printWindow = window.open('', '_blank', 'width=900,height=800');
-    
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>${title.replace(/\s+/g, '_')}_Proposal</title>
-            <style>
-                body { margin: 0; background: #ffffff; }
-                @media print {
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-            </style>
-        </head>
-        <body>
-            ${htmlContent}
-            <script>
-                window.onload = function() {
-                    window.print();
-                };
-            </script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-}
-
-async function saveItineraryToSupabase() {
-    const saveBtn = document.getElementById('save-btn');
-    const originalText = saveBtn.innerText;
-    saveBtn.innerText = "Saving to Cloud...";
-    saveBtn.style.opacity = "0.6";
-
-    const title = document.getElementById('pkg-title').value;
-    const destination = document.getElementById('pkg-destination').value;
-    const startDate = document.getElementById('pkg-date').value || null;
-    const numberOfPeople = parseInt(document.getElementById('pkg-pax').value) || 1;
-    const vehicleUsed = document.getElementById('pkg-vehicle').value;
-    const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
-    const customerId = document.getElementById('pkg-customer-select').value || null;
-    const airfarePrice = parseFloat(document.getElementById('pkg-airfare').value) || 0;
-
-    const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
-    const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
-    const inclusions = inclusionsText.split('\n').filter(item => item.trim() !== "");
-    const exclusions = exclusionsText.split('\n').filter(item => item.trim() !== "");
-
-    const hotelBlocks = hotelsContainer ? hotelsContainer.children : [];
-    const hotelsPayload = Array.from(hotelBlocks).map(block => {
-        return {
-            hotel_name: block.querySelector('.hotel-name').value || "TBD",
-            check_in: block.querySelector('.hotel-in').value || null,
-            check_out: block.querySelector('.hotel-out').value || null,
-            nights: parseInt(block.querySelector('.hotel-nights').value) || 0
-        };
-    });
-
-    const flightBlocks = flightsContainer ? flightsContainer.children : [];
-    const flightsPayload = Array.from(flightBlocks).map(block => {
-        return {
-            flight_number: block.querySelector('.fl-num').value || "TBD",
-            route: block.querySelector('.fl-route').value || "---",
-            duration: block.querySelector('.fl-duration').value || "---",
-            dep_date: block.querySelector('.fl-dep-date').value || null,
-            dep_time: block.querySelector('.fl-dep-time').value || "---",
-            arr_date: block.querySelector('.fl-arr-date').value || null,
-            arr_time: block.querySelector('.fl-arr-time').value || "---",
-            has_leg2: block.querySelector('.fl-has-leg2').checked,
-            leg2: block.querySelector('.fl-has-leg2').checked ? {
-                flight_number: block.querySelector('.fl-num2').value || "TBD",
-                route: block.querySelector('.fl-route2').value || "---",
-                duration: block.querySelector('.fl-duration2').value || "---",
-                dep_date: block.querySelector('.fl-dep-date2').value || null,
-                dep_time: block.querySelector('.fl-dep-time2').value || "---",
-                arr_date: block.querySelector('.fl-arr-date2').value || null,
-                arr_time: block.querySelector('.fl-arr-time2').value || "---"
-            } : null
-        };
-    });
-
-    if (!title || !destination) {
-        alert("Please provide at least a Title and Destination to save this quotation.");
-        saveBtn.innerText = originalText;
-        saveBtn.style.opacity = "1";
-        return;
-    }
-
-    const payload = {
-        title,
-        destination,
-        start_date: startDate,
-        number_of_people: numberOfPeople,
-        vehicle_used: vehicleUsed,
-        total_price: totalPrice,
-        inclusions,
-        exclusions,
-        hotel_details: hotelsPayload,
-        customer_id: customerId,
-        flight_details: flightsPayload, 
-        airfare_price: airfarePrice
-    };
-
-    try {
-        let dbResult;
-        if (activeItineraryId) {
-            dbResult = await supabaseClient.from('itineraries').update(payload).eq('id', activeItineraryId);
-        } else {
-            dbResult = await supabaseClient.from('itineraries').insert([payload]);
-        }
-
-        if (dbResult.error) throw dbResult.error;
-
-        saveBtn.innerText = "✓ Synced to CRM";
-        saveBtn.style.backgroundColor = "#059669"; 
-        
-        await fetchAndRenderItinerariesLedger(); 
-
-        setTimeout(() => {
-            saveBtn.innerText = originalText;
-            saveBtn.style.backgroundColor = ""; 
-            saveBtn.style.opacity = "1";
-        }, 2500);
-
-    } catch (err) {
-        console.error("Database operation error sequence:", err);
-        alert(`Could not sync to cloud: ${err.message}`);
-        saveBtn.innerText = originalText;
-        saveBtn.style.opacity = "1";
-    }
-}
+window.deleteItineraryRecord = deleteItineraryRecord; // Push to window context tracking for onclick accessibility
