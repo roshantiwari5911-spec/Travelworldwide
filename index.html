@@ -9,7 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
-        /* Apple-style smooth transitions and premium glassmorphism */
         body {
             background-color: #0b0b0f;
             color: #f5f5f7;
@@ -27,7 +26,6 @@
             border-color: rgba(255, 255, 255, 0.15);
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
         }
-        /* Interactive Cursor Background Canvas */
         #bg-canvas {
             position: fixed;
             top: 0;
@@ -37,7 +35,6 @@
             z-index: -1;
             pointer-events: none;
         }
-        /* Utility class to cleanly hide workspace before authentication */
         .hidden-workspace {
             display: none !important;
         }
@@ -111,6 +108,16 @@
                             <input type="text" id="pkg-vehicle" placeholder="Private Innova Crysta (AC)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
                         </div>
                     </div>
+                </div>
+
+                <div class="border-t border-white/10 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-medium text-white/80">Accommodation Breakdown</h3>
+                        <button type="button" id="add-hotel-btn" class="text-xs bg-indigo-600 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-500 transition">
+                            + Add Hotel Stay
+                        </button>
+                    </div>
+                    <div id="hotels-container" class="space-y-4"></div>
                 </div>
 
                 <div class="border-t border-white/10 pt-6">
