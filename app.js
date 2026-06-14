@@ -114,8 +114,7 @@ async function fetchAndRenderCustomerBase() {
         if(pkgCustomerSelect) {
             pkgCustomerSelect.innerHTML = '<option value="">-- Link Client Profile --</option>';
             customerData.forEach(cust => {
-                const optText = cust.company_name ? `${cust.full_name} (${cust.company_name})` : cust.full_name;
-                pkgCustomerSelect.innerHTML += `<option value="${cust.id}">${optText}</option>`;
+                pkgCustomerSelect.innerHTML += `<option value="${cust.id}">${cust.full_name}</option>`;
             });
         }
 
@@ -130,8 +129,8 @@ async function fetchAndRenderCustomerBase() {
                 customerTableRows.innerHTML += `
                     <tr class="hover:bg-white/[0.02] transition">
                         <td class="py-3 font-medium text-white">${cust.full_name}</td>
-                        <td class="py-3 text-gray-400">${cust.email || '---'}<br/><span class="text-gray-500">${cust.mobile || '---'}</span></td>
-                        <td class="py-3 text-indigo-300 font-mono">${cust.company_name || '<span class="text-gray-600">Individual Stay</span>'}</td>
+                        <td class="py-3 text-gray-400">${cust.email || '---'}</td>
+                        <td class="py-3 text-indigo-300 font-mono">${cust.phone || '---'}</td>
                         <td class="py-3 text-right text-gray-500 font-mono">${createdStamp}</td>
                     </tr>
                 `;
@@ -146,7 +145,6 @@ async function onboardNewCustomerRecord() {
     const fullName = document.getElementById('cust-name').value;
     const email = document.getElementById('cust-email').value;
     const mobile = document.getElementById('cust-mobile').value;
-    const companyName = document.getElementById('cust-company').value;
 
     if(!fullName) {
         alert("Please enter a Full Name to save a profile.");
@@ -156,16 +154,17 @@ async function onboardNewCustomerRecord() {
     addCustSubmitBtn.disabled = true;
 
     try {
+        // EXCLUSIVELY targets the exact columns present in your Supabase structure
         const { error } = await supabaseClient
             .from('customers')
-            .insert([{ full_name: fullName, email, mobile, company_name: companyName }]);
+            .insert([{ full_name: fullName, email: email, phone: mobile }]);
 
         if (error) throw error;
 
         document.getElementById('cust-name').value = '';
         document.getElementById('cust-email').value = '';
         document.getElementById('cust-mobile').value = '';
-        document.getElementById('cust-company').value = '';
+        if(document.getElementById('cust-company')) document.getElementById('cust-company').value = '';
 
         addCustSubmitBtn.innerText = "✓ Record Saved!";
         addCustSubmitBtn.style.backgroundColor = "#059669";
