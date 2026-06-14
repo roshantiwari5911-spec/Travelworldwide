@@ -89,7 +89,7 @@ async function checkExistingAuthSession() {
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session auto-check completed.");
+        console.warn("Session auto-check intercept parsed successfully.");
     }
 }
 
@@ -157,7 +157,6 @@ function resetBuilderWorkspaceForm() {
     if (hotelsContainer) hotelsContainer.innerHTML = '';
     if (daysContainer) daysContainer.innerHTML = '';
     
-    // Clear out DMC Outsourcing Form Sheets
     if (document.getElementById('dmc-net-cost')) document.getElementById('dmc-net-cost').value = '';
     if (document.getElementById('dmc-markup-pct')) document.getElementById('dmc-markup-pct').value = '0';
 
@@ -247,7 +246,6 @@ async function loadSavedItineraryIntoWorkspace(id) {
         document.getElementById('pkg-inclusions').value = Array.isArray(itin.inclusions) ? itin.inclusions.join('\n') : '';
         document.getElementById('pkg-exclusions').value = Array.isArray(itin.exclusions) ? itin.exclusions.join('\n') : '';
 
-        // RESTORE CONSOLIDATED GLOBAL DMC LOGISTICS VALUES FROM DATABASE
         if (document.getElementById('dmc-net-cost')) document.getElementById('dmc-net-cost').value = itin.dmc_net_cost || '';
         if (document.getElementById('dmc-markup-pct')) document.getElementById('dmc-markup-pct').value = itin.dmc_markup_pct || '0';
 
@@ -312,12 +310,10 @@ async function loadSavedItineraryIntoWorkspace(id) {
     }
 }
 
-// UPGRADED: REVENUE ENGINE CALCULATES DMCs WHOLE LAND PACKAGE OUTSOURCE COST CONSOLIDATIONS
 function calculateMarginMetrics() {
     let flightNetTotal = 0;
     let grossAirfareTotal = 0;
 
-    // 1. Calculate isolated internal airfare margins
     if (flightsContainer) {
         Array.from(flightsContainer.children).forEach(block => {
             const net = parseFloat(block.querySelector('.fl-net')?.value) || 0;
@@ -329,25 +325,20 @@ function calculateMarginMetrics() {
         });
     }
 
-    // 2. Parse Centralized Consolidated Whole Package DMC Sizing Inputs
     const dmcNetInput = parseFloat(document.getElementById('dmc-net-cost')?.value) || 0;
     const dmcMarkupInput = parseFloat(document.getElementById('dmc-markup-pct')?.value) || 0;
-    
     let grossLandPackageTotal = dmcNetInput + (dmcNetInput * (dmcMarkupInput / 100));
 
-    // 3. Formulate total multi-component analytics metrics
     let totalAgencyNetCost = flightNetTotal + dmcNetInput;
     let combinedClientGrossQuote = grossLandPackageTotal + grossAirfareTotal;
     let netAgencyProfitTake = combinedClientGrossQuote - totalAgencyNetCost;
 
-    // Direct calculated math elements back into input display fields
     const priceField = document.getElementById('pkg-price');
     const airfareField = document.getElementById('pkg-airfare');
     
     if (priceField) priceField.value = Math.round(grossLandPackageTotal);
     if (airfareField) airfareField.value = Math.round(grossAirfareTotal);
 
-    // Push calculation metrics downstream to internal desk overview ledger board
     document.getElementById('meta-net-cost').innerText = `₹${Math.round(totalAgencyNetCost).toLocaleString('en-IN')}`;
     document.getElementById('meta-profit-cost').innerText = `₹${Math.round(netAgencyProfitTake).toLocaleString('en-IN')}`;
     document.getElementById('meta-gross-cost').innerText = `₹${Math.round(combinedClientGrossQuote).toLocaleString('en-IN')}`;
@@ -357,6 +348,33 @@ function updateLivePreview() {
     calculateMarginMetrics(); 
     if(previewPane) {
         previewPane.innerHTML = compileItineraryHTML();
+    }
+}
+
+async function handleWorkspaceLogin(e) {
+    if (e) e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const submitBtn = document.getElementById('login-submit-btn');
+
+    if (!email || !password) {
+        alert("Please fill out both fields.");
+        return;
+    }
+    submitBtn.innerText = "Verifying Credentials...";
+    submitBtn.disabled = true;
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        submitBtn.innerText = "Access Granted";
+        submitBtn.style.backgroundColor = "#10B981";
+        if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace();
+        setTimeout(() => { unlockPremiumWorkspace(); }, 600);
+    } catch (err) {
+        alert(`Authentication Failed: ${err.message}`);
+        submitBtn.innerText = "Sign In to Workspace";
+        submitBtn.disabled = false;
     }
 }
 
@@ -536,7 +554,26 @@ function removeFlightSectorBlock(id) {
     updateLivePreview();
 }
 
-// FIXED: Cleaned hotel generator inputs to completely purge old scattered individual card net metrics
+window.deleteItineraryRecord = deleteItineraryRecord;
+window.toggleFlightLeg2 = toggleFlightLeg2;
+window.removeFlightSectorBlock = removeFlightSectorBlock;
+window.removeHotelStayBlock = removeHotelStayBlock;
+window.removeItineraryDay = removeItineraryDay;
+window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
+
+function toggleFlightLeg2(id) {
+    const block = document.getElementById(`flight-block-${id}`);
+    const leg2Container = document.getElementById(`flight-leg2-container-${id}`);
+    const checkbox = block?.querySelector('.fl-has-leg2');
+    
+    if (checkbox && checkbox.checked) {
+        leg2Container?.classList.remove('hidden');
+    } else {
+        leg2Container?.classList.add('hidden');
+    }
+    updateLivePreview();
+}
+
 function addHotelStayBlock() {
     hotelCount++;
     const hotelBlock = document.createElement('div');
@@ -615,7 +652,196 @@ function reindexDays() {
     });
 }
 
-// FIXED: Save function binds new single high-level columns onto the payload dictionary
+function formatPremiumDate(dateStr) {
+    if (!dateStr || dateStr === "---") return "---";
+    const opts = { day: 'numeric', month: 'short', year: 'numeric' };
+    return new Date(dateStr).toLocaleDateString('en-US', opts);
+}
+
+function compileItineraryHTML() {
+    const title = document.getElementById('pkg-title').value || "Untitled Premium Package";
+    const dest = document.getElementById('pkg-destination').value || "---";
+    const date = document.getElementById('pkg-date').value || "---";
+    const pax = document.getElementById('pkg-pax').value || "0";
+    const vehicle = document.getElementById('pkg-vehicle').value || "---";
+    const price = document.getElementById('pkg-price').value || "0";
+    const airfare = document.getElementById('pkg-airfare').value || "";
+
+    let flightsHtml = '';
+    const flightBlocks = flightsContainer ? flightsContainer.children : [];
+    Array.from(flightBlocks).forEach((block) => {
+        const fNum = block.querySelector('.fl-num').value || "TBD";
+        const fRoute = block.querySelector('.fl-route').value || "---";
+        const fDur = block.querySelector('.fl-duration').value || "---";
+        const fDepD = formatPremiumDate(block.querySelector('.fl-dep-date').value);
+        const fDepT = block.querySelector('.fl-dep-time').value || "---";
+        const fArrD = formatPremiumDate(block.querySelector('.fl-arr-date').value);
+        const fArrT = block.querySelector('.fl-arr-time').value || "---";
+        const hasLeg2 = block.querySelector('.fl-has-leg2').checked;
+
+        flightsHtml += `
+            <div style="border-left: 3px solid #06b6d4; padding-left: 12px; margin-bottom: 14px; font-size: 11.5px;">
+                <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">Sector Segment: ${fRoute} (${fNum})</div>
+                <div style="color: #475569;">
+                    <strong>Departure:</strong> ${fDepD} @ ${fDepT} &nbsp;|&nbsp; 
+                    <strong>Arrival:</strong> ${fArrD} @ ${fArrT} &nbsp;|&nbsp; 
+                    <strong>Duration:</strong> ${fDur}
+                </div>
+            </div>
+        `;
+
+        if (hasLeg2) {
+            const fNum2 = block.querySelector('.fl-num2').value || "TBD";
+            const fRoute2 = block.querySelector('.fl-route2').value || "---";
+            const fDur2 = block.querySelector('.fl-duration2').value || "---";
+            const fDepD2 = formatPremiumDate(block.querySelector('.fl-dep-date2').value);
+            const fDepT2 = block.querySelector('.fl-dep-time2').value || "---";
+            const fArrD2 = formatPremiumDate(block.querySelector('.fl-arr-date2').value);
+            const fArrT2 = block.querySelector('.fl-arr-time2').value || "---";
+
+            flightsHtml += `
+                <div style="border-left: 3px dashed #a5f3fc; padding-left: 12px; margin-left: 15px; margin-bottom: 14px; font-size: 11px; background: #f8fafc; padding-top: 4px; padding-bottom: 4px;">
+                    <div style="font-weight: 700; color: #0369a1; margin-bottom: 2px;">Connecting Leg 2: ${fRoute2} (${fNum2})</div>
+                    <div style="color: #475569;">
+                        <strong>Departure:</strong> ${fDepD2} @ ${fDepT2} &nbsp;|&nbsp; 
+                        <strong>Arrival:</strong> ${fArrD2} @ ${fArrT2} &nbsp;|&nbsp; 
+                        <strong>Duration:</strong> ${fDur2}
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    let hotelsHtml = '';
+    const hotelBlocks = hotelsContainer ? hotelsContainer.children : [];
+    Array.from(hotelBlocks).forEach((block) => {
+        const hName = block.querySelector('.hotel-name').value || "Accommodation Pending Confirmation";
+        const hIn = formatPremiumDate(block.querySelector('.hotel-in').value);
+        const hOut = formatPremiumDate(block.querySelector('.hotel-out').value);
+        const hNights = block.querySelector('.hotel-nights').value || "0";
+
+        hotelsHtml += `
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11.5px; color: #334155;">
+                <td style="padding: 10px 8px; font-weight: 600; color: #0f172a;">${hName}</td>
+                <td style="padding: 10px 8px; text-align: center;">${hIn}</td>
+                <td style="padding: 10px 8px; text-align: center;">${hOut}</td>
+                <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #4f46e5;">${hNights} N</td>
+            </tr>
+        `;
+    });
+
+    const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
+    const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
+    const inclusionsArray = inclusionsText.split('\n').filter(item => item.trim() !== "");
+    const exclusionsArray = exclusionsText.split('\n').filter(item => item.trim() !== "");
+
+    let incHtml = inclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
+    let excHtml = exclusionsArray.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('');
+
+    let daysHtml = '';
+    const dayBlocks = daysContainer ? daysContainer.children : [];
+    Array.from(dayBlocks).forEach((block, index) => {
+        const dTitle = block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`;
+        const dDesc = block.querySelector('.day-desc-input').value || 'Excursion details to follow.';
+        daysHtml += `
+            <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                <h4 style="font-size: 13.5px; font-weight: 700; color: #1e1b4b; margin: 0 0 6px 0;">Day ${index + 1}: ${dTitle}</h4>
+                <p style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.6; text-align: justify;">${dDesc}</p>
+            </div>
+        `;
+    });
+
+    let airfareBlockHtml = '';
+    if (airfare && Number(airfare) > 0) {
+        airfareBlockHtml = `
+            <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 12px; padding: 14px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
+                <div>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #0f766e; font-weight:700; display:block;">Estimated Flight Fare Pricing</span>
+                    <span style="font-size: 11px; color: #115e59;">Subject to direct live airline availability indices upon booking</span>
+                </div>
+                <div style="font-size: 16px; font-weight: 700; color: #0d9488;">
+                    ₹${Number(airfare).toLocaleString('en-IN')}/-
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
+                <div>
+                    <h2 style="font-size: 24px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
+                    <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; tracking: 1px;">Boutique Curated Quotation</p>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.4;">
+                    <p style="margin:0; font-weight: 600; color: #334155;">salestravelworldwide@gmail.com</p>
+                    <p style="margin:0;">+91 88926 89595</p>
+                </div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
+                <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
+                <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
+                <div><strong style="color: #475569;">Departure Date:</strong> <span style="color: #0f172a; font-weight: 500;">${formatPremiumDate(date)}</span></div>
+                <div><strong style="color: #475569;">Total Travelers:</strong> <span style="color: #0f172a; font-weight: 500;">${pax} Adults</span></div>
+                <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
+            </div>
+
+            ${flightBlocks.length > 0 ? `
+            <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                <h3 style="font-size: 12px; font-weight: 800; color: #0891b2; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Flight Routing & Logistics</h3>
+                ${flightsHtml}
+            </div>
+            ` : ''}
+
+            ${airfareBlockHtml}
+
+            <div style="margin-bottom: 25px; page-break-inside: avoid;">
+                <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;">Premium Stays & Accommodations</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #f8fafc; text-align: left; color: #475569; font-weight: 700; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 8px;">Hotel Property Name</th>
+                            <th style="padding: 8px; text-align: center;">Check-In</th>
+                            <th style="padding: 8px; text-align: center;">Check-Out</th>
+                            <th style="padding: 8px; text-align: center;">Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${hotelsHtml || '<tr><td colspan="4" style="color:#94a3b8; font-style:italic; padding:10px; font-size:11px;">No properties selected.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Day-Wise Details</h3>
+                ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:11px;">No itinerary days added yet.</p>'}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
+                <div>
+                    <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Custom Inclusions</h4>
+                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.6;">
+                        ${incHtml || '<li>Standard inclusions applied</li>'}
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin: 0 0 8px 0;">✕ Exclusions</h4>
+                    <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 14px; line-height: 1.6;">
+                        ${excHtml || '<li>Standard exclusions applied</li>'}
+                    </ul>
+                </div>
+            </div>
+            <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
+                <div>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Main Land Package Investment</span>
+                    <span style="font-size: 11px; color: #cbd5e1;">All inclusive of boutique coordination levies</span>
+                </div>
+                <div style="font-size: 20px; font-weight: 700; color: #34d399;">
+                    ₹${Number(price).toLocaleString('en-IN')}/-
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 async function saveItineraryToSupabase() {
     const saveBtn = document.getElementById('save-btn');
     const originalText = saveBtn.innerText;
@@ -631,7 +857,6 @@ async function saveItineraryToSupabase() {
     const customerId = document.getElementById('pkg-customer-select').value || null;
     const airfarePrice = parseFloat(document.getElementById('pkg-airfare').value) || 0;
 
-    // CAPTURE CENTRALIZED WHOLE CONTAINER METRICS KEYS
     const dmcNetCost = parseFloat(document.getElementById('dmc-net-cost').value) || 0;
     const dmcMarkupPct = parseFloat(document.getElementById('dmc-markup-pct').value) || 0;
 
@@ -695,8 +920,8 @@ async function saveItineraryToSupabase() {
         customer_id: customerId,
         flight_details: flightsPayload, 
         airfare_price: airfarePrice,
-        dmc_net_cost: dmcNetCost,      // Maps globally to Supabase table column cache
-        dmc_markup_pct: dmcMarkupPct   // Maps globally to Supabase table column cache
+        dmc_net_cost: dmcNetCost,
+        dmc_markup_pct: dmcMarkupPct
     };
 
     try {
@@ -724,6 +949,3 @@ async function saveItineraryToSupabase() {
         saveBtn.style.opacity = "1";
     }
 }
-window.deleteItineraryRecord = deleteItineraryRecord;
-window.toggleFlightLeg2 = toggleFlightLeg2;
-</script>
