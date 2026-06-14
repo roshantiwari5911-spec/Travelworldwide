@@ -10,21 +10,23 @@
     
     <style>
         body {
-            background-color: #0b0b0f;
+            background-color: #050508;
             color: #f5f5f7;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow-x: hidden;
         }
+        /* Apple-level glassmorphism */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(10, 10, 15, 0.45);
+            backdrop-filter: blur(35px);
+            -webkit-backdrop-filter: blur(35px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .glass-panel:hover {
-            border-color: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
+            transform: translateY(-2px);
         }
         #bg-canvas {
             position: fixed;
@@ -32,43 +34,55 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
+            z-index: 1;
             pointer-events: none;
         }
-        /* FIXED: Added strict display rule properties */
         .hidden-workspace {
             display: none !important;
         }
+        /* Smooth Apple transitions */
+        .premium-transition {
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        input, textarea, select {
+            background: rgba(255, 255, 255, 0.03) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: rgba(255, 255, 255, 0.25) !important;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.03);
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6">
+<body class="min-h-screen flex flex-col items-center justify-center p-6 relative">
 
     <canvas id="bg-canvas"></canvas>
 
-    <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl text-center transition-all duration-500 z-50">
-        <h2 class="text-2xl font-semibold tracking-tight text-white mb-2">Travel World Wide</h2>
-        <p class="text-xs text-gray-400 mb-6">Internal CRM System Authentication</p>
+    <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl text-center premium-transition z-50">
+        <div class="mb-2 text-[10px] font-bold tracking-[0.25em] text-indigo-400 uppercase">Proprietary Nexus</div>
+        <h2 class="text-2xl font-light tracking-wide text-white mb-6">Internal CRM Authentication</h2>
         
         <form id="login-form" class="space-y-4 text-left" onsubmit="return false;">
             <div>
-                <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
-                <input type="email" id="login-email" required placeholder="name@domain.com" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-2">Security Identifier</label>
+                <input type="email" id="login-email" required placeholder="name@domain.com" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Password</label>
-                <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                <label class="block text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-2">Access Keyphrase</label>
+                <input type="password" id="login-password" required placeholder="••••••••" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
             </div>
-            <button type="button" id="login-submit-btn" class="w-full bg-white text-black font-semibold py-3 rounded-xl hover:bg-gray-200 transition mt-2">
-                Sign In to Workspace
+            <button type="button" id="login-submit-btn" class="w-full bg-white text-black font-semibold py-3.5 rounded-xl hover:bg-gray-200 active:scale-[0.99] transition mt-4 text-xs tracking-wider uppercase">
+                Initialize System Workspace
             </button>
         </form>
     </div>
 
-    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl hidden-workspace opacity-0 transition-all duration-700">
+    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl hidden-workspace opacity-0 premium-transition z-50">
         
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-8 gap-4">
             <div>
-                <h1 class="text-2xl font-semibold tracking-tight text-white">Travel World Wide CRM</h1>
+                <h1 class="text-2xl font-medium tracking-tight text-white">Travel World Wide CRM</h1>
                 <nav class="flex gap-2 mt-3">
                     <button id="tab-itinerary" class="text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition">
                         Quotation Builder
@@ -89,7 +103,7 @@
                 <div class="flex justify-between items-center">
                     <h2 class="text-lg font-medium text-white/90">Create New Quotation</h2>
                     <div class="w-48 text-left">
-                        <select id="pkg-customer-select" class="w-full bg-indigo-950/40 border border-indigo-500/30 rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none focus:border-indigo-500 transition">
+                        <select id="pkg-customer-select" class="w-full rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none transition">
                             <option value="">-- Link Client Profile --</option>
                         </select>
                     </div>
@@ -98,28 +112,28 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Package Title</label>
-                        <input type="text" id="pkg-title" placeholder="e.g., 4 Nights Luxury Escape to Maldives" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                        <input type="text" id="pkg-title" placeholder="e.g., 4 Nights Luxury Escape to Maldives" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
                     </div>
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Destination</label>
-                            <input type="text" id="pkg-destination" placeholder="Maldives" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                            <input type="text" id="pkg-destination" placeholder="Maldives" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Travel Date</label>
-                            <input type="date" id="pkg-date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                            <input type="date" id="pkg-date" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
-                            <input type="number" id="pkg-pax" placeholder="2" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                            <input type="number" id="pkg-pax" placeholder="2" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Vehicle Standard</label>
-                            <input type="text" id="pkg-vehicle" placeholder="Private Innova Crysta (AC)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/30 text-white transition">
+                            <input type="text" id="pkg-vehicle" placeholder="Private Innova Crysta (AC)" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
                         </div>
                     </div>
                 </div>
@@ -147,18 +161,18 @@
                 <div class="border-t border-white/10 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Inclusions</label>
-                        <textarea id="pkg-inclusions" rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()">Premium accommodations as detailed above&#10;All airport transfers and local sightseeing via private AC vehicle&#10;Daily gourmet breakfast at the hotel properties</textarea>
+                        <textarea id="pkg-inclusions" rows="4" class="w-full rounded-xl px-4 py-3 text-xs focus:outline-none text-white resize-none" oninput="updateLivePreview()">Premium accommodations as detailed above&#10;All airport transfers and local sightseeing via private AC vehicle&#10;Daily gourmet breakfast at the hotel properties</textarea>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Exclusions</label>
-                        <textarea id="pkg-exclusions" rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-white/30 text-white resize-none" oninput="updateLivePreview()">International or domestic flight tickets&#10;Personal laundry, tips, and items outside mentioned meals&#10;Travel insurance or emergency documentation support</textarea>
+                        <textarea id="pkg-exclusions" rows="4" class="w-full rounded-xl px-4 py-3 text-xs focus:outline-none text-white resize-none" oninput="updateLivePreview()">International or domestic flight tickets&#10;Personal laundry, tips, and items outside mentioned meals&#10;Travel insurance or emergency documentation support</textarea>
                     </div>
                 </div>
 
                 <div class="border-t border-white/10 pt-6 space-y-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Total Package Price (INR)</label>
-                        <input type="number" id="pkg-price" placeholder="₹1,50,000" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition">
+                        <input type="number" id="pkg-price" placeholder="₹1,50,000" class="w-full rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition">
                     </div>
                     <div class="flex gap-4 pt-2">
                         <button id="save-btn" class="flex-1 bg-white/10 border border-white/20 text-white font-medium py-3 rounded-xl hover:bg-white/20 transition">Save to CRM</button>
@@ -181,19 +195,19 @@
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Full Client Name</label>
-                            <input type="text" id="cust-name" placeholder="Johnathan Doe" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                            <input type="text" id="cust-name" placeholder="Johnathan Doe" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
-                            <input type="email" id="cust-email" placeholder="john@corporate.com" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                            <input type="email" id="cust-email" placeholder="john@corporate.com" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Mobile / Contact String</label>
-                            <input type="text" id="cust-mobile" placeholder="+91 XXXXX XXXXX" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                            <input type="text" id="cust-mobile" placeholder="+91 XXXXX XXXXX" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Company Affiliation (Optional)</label>
-                            <input type="text" id="cust-company" placeholder="Mastercard Corporate India" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30">
+                            <input type="text" id="cust-company" placeholder="Mastercard Corporate India" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
                         </div>
                     </div>
                     <button id="add-cust-submit-btn" class="w-full bg-indigo-600 text-white font-medium py-2.5 rounded-xl hover:bg-indigo-500 transition text-xs mt-2">
@@ -224,24 +238,179 @@
     <script>
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
-        let mouse = { x: undefined, y: undefined };
-        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        
+        let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, targetX: window.innerWidth / 2, targetY: window.innerHeight / 2 };
+        let globalAlphaMultiplier = 1.0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if(mouse.x && mouse.y) {
-                let gradient = ctx.createRadialGradient(mouse.x, mouse.y, 10, mouse.x, mouse.y, 450);
-                gradient.addColorStop(0, 'rgba(99, 102, 241, 0.08)');
-                gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.03)');
-                gradient.addColorStop(1, 'transparent');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-            requestAnimationFrame(animate);
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.targetX = e.clientX;
+            mouse.targetY = e.clientY;
+        });
+
+        // Track user login completion to fade out background design elements elegantly
+        function fadeEngineForWorkspace() {
+            let fadeInterval = setInterval(() => {
+                globalAlphaMultiplier -= 0.05;
+                if(globalAlphaMultiplier <= 0.15) {
+                    globalAlphaMultiplier = 0.15; // Retain a beautiful ambient layout background tint inside the dashboard workspace
+                    clearInterval(fadeInterval);
+                }
+            }, 30);
         }
-        animate();
+
+        // Mathematical Parallax Objects Mapping Array
+        const elements = [
+            { type: 'text', text: 'TRAVEL WORLD WIDE', size: 0.065, weight: '100', tracking: 16, xP: 0.5, yP: 0.45, depth: 0.15, color: 'rgba(255,255,255,0.045)' },
+            { type: 'flight', size: 35, xP: 0.25, yP: 0.3, depth: 0.65, angle: -Math.PI / 6, speed: 0.04 },
+            { type: 'hotel', size: 45, xP: 0.78, yP: 0.65, depth: 0.45 },
+            { type: 'card', width: 90, height: 56, xP: 0.2, yP: 0.7, depth: 0.8, tilt: 0.2 },
+            { type: 'cruise', size: 70, xP: 0.72, yP: 0.25, depth: 0.35 }
+        ];
+
+        function drawFlight(ctx, x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x + size * 0.2, y - size * 0.2);
+            ctx.lineTo(x + size, y + size * 0.2);
+            ctx.lineTo(x + size * 0.1, y + size * 0.1);
+            ctx.lineTo(x, y + size * 0.6);
+            ctx.lineTo(x - size * 0.1, y + size * 0.1);
+            ctx.lineTo(x - size, y + size * 0.2);
+            ctx.lineTo(x - size * 0.2, y - size * 0.2);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(129, 140, 248, ${0.12 * globalAlphaMultiplier})`;
+            ctx.fill();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 * globalAlphaMultiplier})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        function drawHotel(ctx, x, y, size) {
+            ctx.strokeStyle = `rgba(168, 85, 247, ${0.14 * globalAlphaMultiplier})`;
+            ctx.lineWidth = 1.5;
+            // Minimalist geometric tower silhouette
+            ctx.strokeRect(x - size * 0.4, y - size * 0.8, size * 0.8, size * 1.6);
+            ctx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                let rowY = y - size * 0.5 + (i * size * 0.3);
+                ctx.moveTo(x - size * 0.2, rowY); ctx.lineTo(x - size * 0.05, rowY);
+                ctx.moveTo(x + size * 0.05, rowY); ctx.lineTo(x + size * 0.2, rowY);
+            }
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.08 * globalAlphaMultiplier})`;
+            ctx.stroke();
+        }
+
+        function drawPremiumCard(ctx, x, y, w, h) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(0.15); // Fine horizontal rotation tilt
+            // Frosted gradient card backing field bounds
+            let cardGrd = ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
+            cardGrd.addColorStop(0, `rgba(255,255,255, ${0.03 * globalAlphaMultiplier})`);
+            cardGrd.addColorStop(1, `rgba(255,255,255, ${0.005 * globalAlphaMultiplier})`);
+            ctx.fillStyle = cardGrd;
+            ctx.beginPath();
+            ctx.roundRect(-w/2, -h/2, w, h, 6);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(255,255,255, ${0.2 * globalAlphaMultiplier})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // Elegant microchip geometry blueprint vector mapping
+            ctx.fillStyle = `rgba(245, 158, 11, ${0.15 * globalAlphaMultiplier})`;
+            ctx.roundRect(-w/2 + 12, -h/2 + 14, 16, 12, 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawCruise(ctx, x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.6, y + size * 0.2);
+            ctx.lineTo(x + size * 0.5, y + size * 0.2);
+            ctx.lineTo(x + size * 0.7, y - size * 0.1);
+            ctx.lineTo(x - size * 0.5, y - size * 0.1);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(6, 182, 212, ${0.09 * globalAlphaMultiplier})`;
+            ctx.fill();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 * globalAlphaMultiplier})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // Layer architectural decks panels outline
+            ctx.strokeRect(x - size * 0.4, y - size * 0.3, size * 0.9, size * 0.2);
+        }
+
+        let pulseTime = 0;
+        function renderCinematicLoop() {
+            pulseTime += 0.004;
+            
+            // Apply fluid interpolation drag math to cursor positions coordinates mapping vectors
+            mouse.x += (mouse.targetX - mouse.x) * 0.06;
+            mouse.y += (mouse.targetY - mouse.y) * 0.06;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Core Dynamic Radial Lighting Grid Field Glow Background Layer
+            let baseGrd = ctx.createRadialGradient(mouse.x, mouse.y, 20, mouse.x, mouse.y, Math.max(canvas.width, canvas.height) * 0.6);
+            baseGrd.addColorStop(0, `rgba(99, 102, 241, ${0.12 * globalAlphaMultiplier})`);
+            baseGrd.addColorStop(0.4, `rgba(147, 51, 234, ${0.04 * globalAlphaMultiplier})`);
+            baseGrd.addColorStop(1, 'transparent');
+            ctx.fillStyle = baseGrd;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Map Render Execution Stream over the Parallax Elements Loop
+            elements.forEach(el => {
+                // Compute offset values based on depth physics scale parameters
+                let offsetX = (mouse.x - canvas.width / 2) * el.depth;
+                let offsetY = (mouse.y - canvas.height / 2) * el.depth;
+
+                let renderX = (canvas.width * el.xP) + offsetX;
+                let renderY = (canvas.height * el.yP) + offsetY;
+
+                if (el.type === 'text') {
+                    ctx.save();
+                    let computedSize = canvas.width * el.size;
+                    ctx.font = `${el.weight} ${computedSize}px -apple-system, BlinkMacSystemFont, "Segoe UI"`;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${0.035 * globalAlphaMultiplier})`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.letterSpacing = `${el.tracking}px`;
+                    // Smooth subtle breathing baseline motion modulation displacement
+                    let floatY = renderY + Math.sin(pulseTime) * 12;
+                    ctx.fillText(el.text, renderX, floatY);
+                    ctx.restore();
+                } 
+                else if (el.type === 'flight') {
+                    ctx.save();
+                    ctx.translate(renderX, renderY);
+                    // Add subtle automated slow loop orbit drift calculation trajectory parameters
+                    let flightTimeOffset = pulseTime * 1.5;
+                    ctx.rotate(el.angle + Math.sin(flightTimeOffset) * 0.05);
+                    drawFlight(ctx, Math.cos(flightTimeOffset) * 20, Math.sin(flightTimeOffset) * 10, el.size);
+                    ctx.restore();
+                } 
+                else if (el.type === 'hotel') {
+                    let floatY = renderY + Math.cos(pulseTime * 0.8) * 8;
+                    drawHotel(ctx, renderX, floatY, el.size);
+                } 
+                else if (el.type === 'card') {
+                    let floatY = renderY + Math.sin(pulseTime * 1.2) * 10;
+                    drawPremiumCard(ctx, renderX, floatY, el.width, el.height);
+                } 
+                else if (el.type === 'cruise') {
+                    let driftX = renderX + Math.sin(pulseTime * 0.5) * 15;
+                    drawCruise(ctx, driftX, renderY, el.size);
+                }
+            });
+
+            requestAnimationFrame(renderCinematicLoop);
+        }
+        renderCinematicLoop();
     </script>
     <script src="app.js"></script>
 </body>
