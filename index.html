@@ -40,7 +40,7 @@
             display: none !important;
         }
         .premium-transition {
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
         input, textarea, select {
             background: rgba(255, 255, 255, 0.03) !important;
@@ -51,13 +51,20 @@
             border-color: rgba(255, 255, 255, 0.25) !important;
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.03);
         }
+        /* Cinematic Slide-out Drawer Panel Overlays */
+        #ledger-drawer {
+            transform: translateX(-105%);
+            z-index: 100;
+        }
+        #ledger-drawer.open {
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-6 relative">
 
     <canvas id="bg-canvas"></canvas>
 
-    <!-- APPLE LEVEL FROSTED LOGIN GATE SCREEN -->
     <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl text-center premium-transition z-50">
         <div class="mb-2 text-[10px] font-bold tracking-[0.25em] text-indigo-400 uppercase">Proprietary Nexus</div>
         <h2 class="text-2xl font-light tracking-wide text-white mb-6">Internal CRM Authentication</h2>
@@ -77,21 +84,48 @@
         </form>
     </div>
 
-    <!-- MAIN CRM SYSTEM DASHBOARD ENVIRONMENT -->
-    <main id="crm-workspace" class="w-full max-w-[90rem] w-full glass-panel rounded-3xl p-6 md:p-10 shadow-2xl hidden-workspace opacity-0 premium-transition z-50">
+    <div id="ledger-drawer" class="fixed top-0 left-0 h-full w-80 bg-[#09090e]/95 backdrop-blur-3xl border-r border-white/10 p-6 shadow-2xl flex flex-col premium-transition">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+            <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Cloud Database</span>
+                <h3 class="text-sm font-semibold text-white">Saved Records Ledger</h3>
+            </div>
+            <button id="close-ledger-btn" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" data-mono="true" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="flex justify-between items-center mb-4">
+            <span class="text-[11px] text-gray-500 font-medium">Select a draft to modify</span>
+            <button id="clear-workspace-btn" class="text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-1 rounded-md hover:bg-indigo-500/20 transition">New Form</button>
+        </div>
+        <div id="saved-itineraries-ledger" class="space-y-2 overflow-y-auto flex-1 pr-1 text-xs">
+            <div class="text-gray-500 italic py-2">Loading cloud records...</div>
+        </div>
+    </div>
+
+    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl hidden-workspace opacity-0 premium-transition z-40 relative">
         
-        <!-- Navigation Header -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-8 gap-4">
-            <div>
-                <h1 class="text-2xl font-medium tracking-tight text-white">Travel World Wide CRM</h1>
-                <nav class="flex gap-2 mt-3">
-                    <button id="tab-itinerary" class="text-xs bg-white text-black font-semibold px-4 py-2 rounded-xl shadow transition">
-                        Quotation Builder
-                    </button>
-                    <button id="tab-customers" class="text-xs bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-4 py-2 rounded-xl transition">
-                        Customer Directory
-                    </button>
-                </nav>
+            <div class="flex items-center gap-4">
+                <button id="open-ledger-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition shadow-lg shadow-indigo-900/20 flex items-center gap-2 text-xs font-semibold tracking-wide">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    Saved Records
+                </button>
+                <div>
+                    <h1 class="text-xl font-medium tracking-tight text-white">Travel World Wide CRM</h1>
+                    <nav class="flex gap-2 mt-2">
+                        <button id="tab-itinerary" class="text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition">
+                            Quotation Builder
+                        </button>
+                        <button id="tab-customers" class="text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition">
+                            Customer Directory
+                        </button>
+                    </nav>
+                </div>
             </div>
             <div class="flex items-center gap-4 text-left md:text-right text-xs text-gray-500 self-end md:self-auto">
                 <div>
@@ -104,27 +138,11 @@
             </div>
         </header>
 
-        <!-- MODULE 1: ITINERARY ENVIRONMENT (EXPANDED TO THREE COLUMNS) -->
-        <div id="module-itinerary" class="grid grid-cols-1 xl:grid-cols-4 gap-6 transition-all duration-300">
-            
-            <!-- SUB-SECTION A: CRM SAVED ITINERARIES LEDGER (1 Column) -->
-            <div class="xl:col-span-1 bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col max-h-[1000px] overflow-hidden">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Saved Cloud Records</h3>
-                    <button id="clear-workspace-btn" class="text-[10px] text-indigo-400 hover:underline">New Form</button>
-                </div>
-                <!-- Dynamic Ledger List Hook Container -->
-                <div id="saved-itineraries-ledger" class="space-y-2 overflow-y-auto flex-1 pr-1 text-xs">
-                    <div class="text-gray-500 italic py-2">Loading cloud records...</div>
-                </div>
-            </div>
-
-            <!-- SUB-SECTION B: BUILDER WORKSPACE INPUT FORM (2 Columns) -->
-            <div class="xl:col-span-2 space-y-6">
+        <div id="module-itinerary" class="grid grid-cols-1 lg:grid-cols-2 gap-8 transition-all duration-300">
+            <section class="space-y-6">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-3">
-                        <h2 class="text-lg font-medium text-white/90">Quotation Builder</h2>
-                        <!-- Hidden badge that lights up if updating an existing record -->
+                        <h2 class="text-lg font-medium text-white/90">Create New Quotation</h2>
                         <span id="active-record-badge" class="hidden text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">Editing Mode</span>
                     </div>
                     <div class="w-48 text-left">
@@ -219,16 +237,14 @@
                         <button id="export-btn" class="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition">Export Premium PDF</button>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- SUB-SECTION C: LIVE PREVIEW DRAWER (1 Column) -->
-            <div class="xl:col-span-1 flex flex-col">
+            <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col">
                 <h2 class="text-lg font-medium text-white/90 mb-6">Live Premium Preview</h2>
-                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-6 min-h-[600px] max-h-[1000px] overflow-y-auto shadow-inner text-sm space-y-6"></div>
-            </div>
+                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-8 min-h-[700px] shadow-inner text-sm space-y-6"></div>
+            </section>
         </div>
 
-        <!-- MODULE 2: CUSTOMER DIRECTORY -->
         <div id="module-customers" class="hidden space-y-6 transition-all duration-300">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="bg-white/5 border border-white/5 rounded-2xl p-6 h-fit space-y-4">
@@ -272,7 +288,6 @@
         </div>
     </main>
 
-    <!-- HIGH-FIDELITY PARALLAX SIMULATION SCRIPT -->
     <script>
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
@@ -296,23 +311,14 @@
             ctx.beginPath(); ctx.moveTo(x, y - size); ctx.lineTo(x + size * 0.2, y - size * 0.2); ctx.lineTo(x + size, y + size * 0.2); ctx.lineTo(x + size * 0.1, y + size * 0.1); ctx.lineTo(x, y + size * 0.6); ctx.lineTo(x - size * 0.1, y + size * 0.1); ctx.lineTo(x - size, y + size * 0.2); ctx.lineTo(x - size * 0.2, y - size * 0.2); ctx.closePath();
             ctx.fillStyle = `rgba(129, 140, 248, ${0.12 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 * globalAlphaMultiplier})`; ctx.stroke();
         }
-        function drawHotel(ctx, x, y, size) {
-            ctx.strokeStyle = `rgba(168, 85, 247, ${0.14 * globalAlphaMultiplier})`; ctx.lineWidth = 1.5; ctx.strokeRect(x - size * 0.4, y - size * 0.8, size * 0.8, size * 1.6);
-        }
-        function drawPremiumCard(ctx, x, y, w, h) {
-            ctx.save(); ctx.translate(x, y); ctx.rotate(0.15); ctx.fillStyle = `rgba(255,255,255, ${0.03 * globalAlphaMultiplier})`; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, 6); ctx.fill(); ctx.strokeStyle = `rgba(255,255,255, ${0.2 * globalAlphaMultiplier})`; ctx.stroke(); ctx.restore();
-        }
-        function drawCruise(ctx, x, y, size) {
-            ctx.beginPath(); ctx.moveTo(x - size * 0.6, y + size * 0.2); ctx.lineTo(x + size * 0.5, y + size * 0.2); ctx.lineTo(x + size * 0.7, y - size * 0.1); ctx.lineTo(x - size * 0.5, y - size * 0.1); ctx.closePath(); ctx.fillStyle = `rgba(6, 182, 212, ${0.09 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 * globalAlphaMultiplier})`; ctx.stroke();
-        }
+        function drawHotel(ctx, x, y, size) { ctx.strokeStyle = `rgba(168, 85, 247, ${0.14 * globalAlphaMultiplier})`; ctx.lineWidth = 1.5; ctx.strokeRect(x - size * 0.4, y - size * 0.8, size * 0.8, size * 1.6); }
+        function drawPremiumCard(ctx, x, y, w, h) { ctx.save(); ctx.translate(x, y); ctx.rotate(0.15); ctx.fillStyle = `rgba(255,255,255, ${0.03 * globalAlphaMultiplier})`; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, 6); ctx.fill(); ctx.strokeStyle = `rgba(255,255,255, ${0.2 * globalAlphaMultiplier})`; ctx.stroke(); ctx.restore(); }
+        function drawCruise(ctx, x, y, size) { ctx.beginPath(); ctx.moveTo(x - size * 0.6, y + size * 0.2); ctx.lineTo(x + size * 0.5, y + size * 0.2); ctx.lineTo(x + size * 0.7, y - size * 0.1); ctx.lineTo(x - size * 0.5, y - size * 0.1); ctx.closePath(); ctx.fillStyle = `rgba(6, 182, 212, ${0.09 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 * globalAlphaMultiplier})`; ctx.stroke(); }
 
         function fadeEngineForWorkspace() {
             let fadeInterval = setInterval(() => {
                 globalAlphaMultiplier -= 0.05;
-                if(globalAlphaMultiplier <= 0.15) {
-                    globalAlphaMultiplier = 0.15;
-                    clearInterval(fadeInterval);
-                }
+                if(globalAlphaMultiplier <= 0.15) { globalAlphaMultiplier = 0.15; clearInterval(fadeInterval); }
             }, 30);
         }
 
@@ -328,8 +334,7 @@
                 let renderX = (canvas.width * el.xP) + offsetX; let renderY = (canvas.height * el.yP) + offsetY;
                 if (el.type === 'text') {
                     ctx.save(); ctx.font = `100 ${canvas.width * el.size}px -apple-system, sans-serif`; ctx.fillStyle = `rgba(255, 255, 255, ${0.035 * globalAlphaMultiplier})`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.letterSpacing = `${el.tracking}px`; ctx.fillText(el.text, renderX, renderY + Math.sin(pulseTime) * 12); ctx.restore();
-                } else if (el.type === 'flight') {
-                    ctx.save(); ctx.translate(renderX, renderY); ctx.rotate(el.angle + Math.sin(pulseTime * 1.5) * 0.05); drawFlight(ctx, 0, 0, el.size); ctx.restore();
+                } else if (el.type === 'flight') { ctx.save(); ctx.translate(renderX, renderY); ctx.rotate(el.angle + Math.sin(pulseTime * 1.5) * 0.05); drawFlight(ctx, 0, 0, el.size); ctx.restore();
                 } else if (el.type === 'hotel') { drawHotel(ctx, renderX, renderY + Math.cos(pulseTime * 0.8) * 8, el.size);
                 } else if (el.type === 'card') { drawPremiumCard(ctx, renderX, renderY + Math.sin(pulseTime * 1.2) * 10, el.width, el.height);
                 } else if (el.type === 'cruise') { drawCruise(ctx, renderX + Math.sin(pulseTime * 0.5) * 15, renderY, el.size); }
