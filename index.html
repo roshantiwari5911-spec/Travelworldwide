@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Travel World Wide — CRM Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,6 +14,7 @@
             color: #f5f5f7;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
         .glass-panel {
             background: rgba(10, 10, 15, 0.45);
@@ -25,7 +26,6 @@
         .glass-panel:hover {
             border-color: rgba(255, 255, 255, 0.12);
             box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
-            transform: translateY(-2px);
         }
         #bg-canvas {
             position: fixed;
@@ -46,12 +46,13 @@
             background: rgba(255, 255, 255, 0.03) !important;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            -webkit-appearance: none;
         }
         input:focus, textarea:focus, select:focus {
             border-color: rgba(255, 255, 255, 0.25) !important;
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.03);
         }
-        /* Cinematic Slide-out Drawer Panel Overlays */
+        /* Mobile vs Desktop Drawer Layout Overrides */
         #ledger-drawer {
             transform: translateX(-105%);
             z-index: 100;
@@ -61,13 +62,13 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6 relative">
+<body class="min-h-screen flex flex-col items-center justify-center p-3 sm:p-6 relative">
 
     <canvas id="bg-canvas"></canvas>
 
-    <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-8 shadow-2xl text-center premium-transition z-50">
+    <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl text-center premium-transition z-50">
         <div class="mb-2 text-[10px] font-bold tracking-[0.25em] text-indigo-400 uppercase">Proprietary Nexus</div>
-        <h2 class="text-2xl font-light tracking-wide text-white mb-6">Internal CRM Authentication</h2>
+        <h2 class="text-xl sm:text-2xl font-light tracking-wide text-white mb-6">Internal CRM Authentication</h2>
         
         <form id="login-form" class="space-y-4 text-left" onsubmit="return false;">
             <div>
@@ -79,45 +80,45 @@
                 <input type="password" id="login-password" required placeholder="••••••••" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
             </div>
             <button type="button" id="login-submit-btn" class="w-full bg-white text-black font-semibold py-3.5 rounded-xl hover:bg-gray-200 active:scale-[0.99] transition mt-4 text-xs tracking-wider uppercase">
-                Initialize System Workspace
+                Initialize Workspace
             </button>
         </form>
     </div>
 
-    <div id="ledger-drawer" class="fixed top-0 left-0 h-full w-80 bg-[#09090e]/95 backdrop-blur-3xl border-r border-white/10 p-6 shadow-2xl flex flex-col premium-transition">
+    <div id="ledger-drawer" class="fixed top-0 left-0 h-full w-full sm:w-80 bg-[#09090e]/95 backdrop-blur-3xl border-r border-white/10 p-5 sm:p-6 shadow-2xl flex flex-col premium-transition">
         <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
             <div class="flex flex-col">
                 <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Cloud Database</span>
                 <h3 class="text-sm font-semibold text-white">Saved Records Ledger</h3>
             </div>
-            <button id="close-ledger-btn" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
+            <button id="close-ledger-btn" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" data-mono="true" d="M6 18L18 6M6 6l12 12" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
         </div>
         <div class="flex justify-between items-center mb-4">
             <span class="text-[11px] text-gray-500 font-medium">Select a draft to modify</span>
-            <button id="clear-workspace-btn" class="text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-1 rounded-md hover:bg-indigo-500/20 transition">New Form</button>
+            <button id="clear-workspace-btn" class="text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-1.5 rounded-md hover:bg-indigo-500/20 transition">New Form</button>
         </div>
         <div id="saved-itineraries-ledger" class="space-y-2 overflow-y-auto flex-1 pr-1 text-xs">
             <div class="text-gray-500 italic py-2">Loading cloud records...</div>
         </div>
     </div>
 
-    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-3xl p-8 md:p-12 shadow-2xl hidden-workspace opacity-0 premium-transition z-40 relative">
+    <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-10 shadow-2xl hidden-workspace opacity-0 premium-transition z-45 relative">
         
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-8 gap-4">
-            <div class="flex items-center gap-4">
-                <button id="open-ledger-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition shadow-lg shadow-indigo-900/20 flex items-center gap-2 text-xs font-semibold tracking-wide">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-6 sm:mb-8 gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4 w-full md:w-auto">
+                <button id="open-ledger-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-xl transition shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2 text-xs font-semibold tracking-wide w-full sm:w-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
                     Saved Records
                 </button>
                 <div>
-                    <h1 class="text-xl font-medium tracking-tight text-white">Travel World Wide CRM</h1>
-                    <nav class="flex gap-2 mt-2">
+                    <h1 class="text-lg sm:text-xl font-medium tracking-tight text-white text-center sm:text-left">Travel World Wide CRM</h1>
+                    <nav class="flex gap-1 mt-2 justify-center sm:justify-start">
                         <button id="tab-itinerary" class="text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition">
                             Quotation Builder
                         </button>
@@ -127,26 +128,26 @@
                     </nav>
                 </div>
             </div>
-            <div class="flex items-center gap-4 text-left md:text-right text-xs text-gray-500 self-end md:self-auto">
-                <div>
+            <div class="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-4 text-xs text-gray-500 w-full md:w-auto pt-2 md:pt-0 border-t border-white/5 md:border-none">
+                <div class="text-left md:text-right">
                     <p class="font-medium text-gray-400">salestravelworldwide@gmail.com</p>
                     <p>+91 88926 89595</p>
                 </div>
-                <button id="logout-btn" class="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/20 text-[11px] font-medium px-3 py-2 rounded-xl transition duration-300 uppercase tracking-wider">
+                <button id="logout-btn" class="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/20 text-[10px] font-medium px-2.5 py-1.5 rounded-lg transition duration-300 uppercase tracking-wider">
                     Sign Out
                 </button>
             </div>
         </header>
 
         <div id="module-itinerary" class="grid grid-cols-1 lg:grid-cols-2 gap-8 transition-all duration-300">
-            <section class="space-y-6">
-                <div class="flex justify-between items-center">
+            <section class="space-y-6 order-2 lg:order-1">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                     <div class="flex items-center gap-3">
-                        <h2 class="text-lg font-medium text-white/90">Create New Quotation</h2>
-                        <span id="active-record-badge" class="hidden text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">Editing Mode</span>
+                        <h2 class="text-md sm:text-lg font-medium text-white/90">Create New Quotation</h2>
+                        <span id="active-record-badge" class="hidden text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">Editing Mode</span>
                     </div>
-                    <div class="w-48 text-left">
-                        <select id="pkg-customer-select" class="w-full rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none transition">
+                    <div class="w-full sm:w-48 text-left">
+                        <select id="pkg-customer-select" class="w-full rounded-lg px-3 py-2 text-xs text-indigo-300 focus:outline-none transition">
                             <option value="">-- Link Client Profile --</option>
                         </select>
                     </div>
@@ -158,7 +159,7 @@
                         <input type="text" id="pkg-title" placeholder="e.g., 4 Nights Luxury Escape to Maldives" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Destination</label>
                             <input type="text" id="pkg-destination" placeholder="Maldives" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
@@ -169,7 +170,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Number of Guests</label>
                             <input type="number" id="pkg-pax" placeholder="2" class="w-full rounded-xl px-4 py-3 text-sm focus:outline-none text-white transition">
@@ -185,7 +186,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-medium text-white/80">Flight Routing Management</h3>
                         <button type="button" id="add-flight-btn" class="text-xs bg-cyan-700 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-cyan-600 transition">
-                            + Add Flight Sector
+                            + Add Sector
                         </button>
                     </div>
                     <div id="flights-container" class="space-y-4"></div>
@@ -200,7 +201,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-medium text-white/80">Accommodation Breakdown</h3>
                         <button type="button" id="add-hotel-btn" class="text-xs bg-indigo-600 text-white font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-500 transition">
-                            + Add Hotel Stay
+                            + Add Hotel
                         </button>
                     </div>
                     <div id="hotels-container" class="space-y-4"></div>
@@ -216,7 +217,7 @@
                     <div id="days-container" class="space-y-4"></div>
                 </div>
 
-                <div class="border-t border-white/10 pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="border-t border-white/10 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Inclusions</label>
                         <textarea id="pkg-inclusions" rows="4" class="w-full rounded-xl px-4 py-3 text-xs focus:outline-none text-white resize-none" oninput="updateLivePreview()">Premium accommodations as detailed above&#10;All airport transfers and local sightseeing via private AC vehicle&#10;Daily gourmet breakfast at the hotel properties</textarea>
@@ -232,46 +233,48 @@
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Land Package / Main Investment Price (INR)</label>
                         <input type="number" id="pkg-price" placeholder="₹1,50,000" class="w-full rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition">
                     </div>
-                    <div class="flex gap-4 pt-2">
-                        <button id="save-btn" class="flex-1 bg-white/10 border border-white/20 text-white font-medium py-3 rounded-xl hover:bg-white/20 transition">Save to CRM</button>
-                        <button id="export-btn" class="flex-1 bg-emerald-600 text-white font-medium py-3 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition">Export Premium PDF</button>
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button id="save-btn" class="w-full sm:flex-1 bg-white/10 border border-white/20 text-white font-medium py-3.5 rounded-xl hover:bg-white/20 transition text-sm">Save to CRM</button>
+                        <button id="export-btn" class="w-full sm:flex-1 bg-emerald-600 text-white font-medium py-3.5 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition text-sm">Export Premium PDF</button>
                     </div>
                 </div>
             </section>
 
-            <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col">
-                <h2 class="text-lg font-medium text-white/90 mb-6">Live Premium Preview</h2>
-                <div id="pdf-preview-pane" class="flex-1 bg-white text-slate-900 rounded-2xl p-8 min-h-[700px] shadow-inner text-sm space-y-6"></div>
+            <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col order-1 lg:order-2 w-full overflow-hidden">
+                <h2 class="text-md sm:text-lg font-medium text-white/90 mb-4 sm:mb-6">Live Premium Preview</h2>
+                <div class="w-full overflow-x-auto bg-white rounded-2xl p-2 sm:p-4 min-h-[500px] lg:min-h-[700px] shadow-inner">
+                    <div id="pdf-preview-pane" class="text-slate-900 text-sm space-y-6 min-w-[650px] lg:min-w-0"></div>
+                </div>
             </section>
         </div>
 
         <div id="module-customers" class="hidden space-y-6 transition-all duration-300">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="bg-white/5 border border-white/5 rounded-2xl p-6 h-fit space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+                <div class="bg-white/5 border border-white/5 rounded-2xl p-5 sm:p-6 h-fit space-y-4">
                     <h3 class="text-md font-semibold text-white tracking-tight">Onboard New Contact</h3>
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Full Client Name</label>
-                            <input type="text" id="cust-name" placeholder="Johnathan Doe" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
+                            <input type="text" id="cust-name" placeholder="Johnathan Doe" class="w-full rounded-lg px-3 py-2.5 text-white focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
-                            <input type="email" id="cust-email" placeholder="john@corporate.com" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
+                            <input type="email" id="cust-email" placeholder="john@corporate.com" class="w-full rounded-lg px-3 py-2.5 text-white focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Mobile / Contact String</label>
-                            <input type="text" id="cust-mobile" placeholder="+91 XXXXX XXXXX" class="w-full rounded-lg px-3 py-2 text-white focus:outline-none">
+                            <input type="text" id="cust-mobile" placeholder="+91 XXXXX XXXXX" class="w-full rounded-lg px-3 py-2.5 text-white focus:outline-none">
                         </div>
                     </div>
-                    <button id="add-cust-submit-btn" class="w-full bg-indigo-600 text-white font-medium py-2.5 rounded-xl hover:bg-indigo-500 transition text-xs mt-2">
-                        Commit Profile to Database
+                    <button id="add-cust-submit-btn" class="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl hover:bg-indigo-500 transition text-xs mt-2 tracking-wider uppercase">
+                        Commit Profile
                     </button>
                 </div>
 
-                <div class="lg:col-span-2 bg-white/5 border border-white/5 rounded-2xl p-6">
+                <div class="lg:col-span-2 bg-white/5 border border-white/5 rounded-2xl p-4 sm:p-6">
                     <h3 class="text-md font-semibold text-white mb-4 tracking-tight">Master Customer Base Index</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left font-sans text-xs">
+                        <table class="w-full text-left font-sans text-xs min-w-[500px]">
                             <thead>
                                 <tr class="text-gray-400 border-b border-white/10 uppercase tracking-wider text-[10px]">
                                     <th class="pb-3">Client Profile</th>
@@ -298,27 +301,29 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         window.addEventListener('mousemove', (e) => { mouse.targetX = e.clientX; mouse.targetY = e.clientY; });
+        // Touch move mapping parameters for responsive iOS canvas reactions
+        window.addEventListener('touchmove', (e) => { if(e.touches.length > 0) { mouse.targetX = e.touches[0].clientX; mouse.targetY = e.touches[0].clientY; } });
 
         const elements = [
             { type: 'text', text: 'TRAVEL WORLD WIDE', size: 0.065, weight: '100', tracking: 16, xP: 0.5, yP: 0.45, depth: 0.15 },
-            { type: 'flight', size: 35, xP: 0.25, yP: 0.3, depth: 0.65, angle: -Math.PI / 6 },
-            { type: 'hotel', size: 45, xP: 0.78, yP: 0.65, depth: 0.45 },
-            { type: 'card', width: 90, height: 56, xP: 0.2, yP: 0.7, depth: 0.8 },
-            { type: 'cruise', size: 70, xP: 0.72, yP: 0.25, depth: 0.35 }
+            { type: 'flight', size: 25, xP: 0.25, yP: 0.25, depth: 0.65, angle: -Math.PI / 6 },
+            { type: 'hotel', size: 30, xP: 0.8, yP: 0.7, depth: 0.45 },
+            { type: 'card', width: 75, height: 46, xP: 0.15, yP: 0.75, depth: 0.8 },
+            { type: 'cruise', size: 50, xP: 0.82, yP: 0.2, depth: 0.35 }
         ];
 
         function drawFlight(ctx, x, y, size) {
             ctx.beginPath(); ctx.moveTo(x, y - size); ctx.lineTo(x + size * 0.2, y - size * 0.2); ctx.lineTo(x + size, y + size * 0.2); ctx.lineTo(x + size * 0.1, y + size * 0.1); ctx.lineTo(x, y + size * 0.6); ctx.lineTo(x - size * 0.1, y + size * 0.1); ctx.lineTo(x - size, y + size * 0.2); ctx.lineTo(x - size * 0.2, y - size * 0.2); ctx.closePath();
-            ctx.fillStyle = `rgba(129, 140, 248, ${0.12 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 * globalAlphaMultiplier})`; ctx.stroke();
+            ctx.fillStyle = `rgba(129, 140, 248, ${0.1 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 * globalAlphaMultiplier})`; ctx.stroke();
         }
-        function drawHotel(ctx, x, y, size) { ctx.strokeStyle = `rgba(168, 85, 247, ${0.14 * globalAlphaMultiplier})`; ctx.lineWidth = 1.5; ctx.strokeRect(x - size * 0.4, y - size * 0.8, size * 0.8, size * 1.6); }
-        function drawPremiumCard(ctx, x, y, w, h) { ctx.save(); ctx.translate(x, y); ctx.rotate(0.15); ctx.fillStyle = `rgba(255,255,255, ${0.03 * globalAlphaMultiplier})`; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, 6); ctx.fill(); ctx.strokeStyle = `rgba(255,255,255, ${0.2 * globalAlphaMultiplier})`; ctx.stroke(); ctx.restore(); }
-        function drawCruise(ctx, x, y, size) { ctx.beginPath(); ctx.moveTo(x - size * 0.6, y + size * 0.2); ctx.lineTo(x + size * 0.5, y + size * 0.2); ctx.lineTo(x + size * 0.7, y - size * 0.1); ctx.lineTo(x - size * 0.5, y - size * 0.1); ctx.closePath(); ctx.fillStyle = `rgba(6, 182, 212, ${0.09 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 * globalAlphaMultiplier})`; ctx.stroke(); }
+        function drawHotel(ctx, x, y, size) { ctx.strokeStyle = `rgba(168, 85, 247, ${0.1 * globalAlphaMultiplier})`; ctx.lineWidth = 1; ctx.strokeRect(x - size * 0.4, y - size * 0.8, size * 0.8, size * 1.6); }
+        function drawPremiumCard(ctx, x, y, w, h) { ctx.save(); ctx.translate(x, y); ctx.rotate(0.15); ctx.fillStyle = `rgba(255,255,255, ${0.02 * globalAlphaMultiplier})`; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, 6); ctx.fill(); ctx.strokeStyle = `rgba(255,255,255, ${0.15 * globalAlphaMultiplier})`; ctx.stroke(); ctx.restore(); }
+        function drawCruise(ctx, x, y, size) { ctx.beginPath(); ctx.moveTo(x - size * 0.6, y + size * 0.2); ctx.lineTo(x + size * 0.5, y + size * 0.2); ctx.lineTo(x + size * 0.7, y - size * 0.1); ctx.lineTo(x - size * 0.5, y - size * 0.1); ctx.closePath(); ctx.fillStyle = `rgba(6, 182, 212, ${0.07 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * globalAlphaMultiplier})`; ctx.stroke(); }
 
         function fadeEngineForWorkspace() {
             let fadeInterval = setInterval(() => {
                 globalAlphaMultiplier -= 0.05;
-                if(globalAlphaMultiplier <= 0.15) { globalAlphaMultiplier = 0.15; clearInterval(fadeInterval); }
+                if(globalAlphaMultiplier <= 0.1) { globalAlphaMultiplier = 0.1; clearInterval(fadeInterval); }
             }, 30);
         }
 
@@ -327,13 +332,14 @@
             pulseTime += 0.004; mouse.x += (mouse.targetX - mouse.x) * 0.06; mouse.y += (mouse.targetY - mouse.y) * 0.06;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let baseGrd = ctx.createRadialGradient(mouse.x, mouse.y, 20, mouse.x, mouse.y, Math.max(canvas.width, canvas.height) * 0.6);
-            baseGrd.addColorStop(0, `rgba(99, 102, 241, ${0.12 * globalAlphaMultiplier})`); baseGrd.addColorStop(0.4, `rgba(147, 51, 234, ${0.04 * globalAlphaMultiplier})`); baseGrd.addColorStop(1, 'transparent'); ctx.fillStyle = baseGrd; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            baseGrd.addColorStop(0, `rgba(99, 102, 241, ${0.1 * globalAlphaMultiplier})`); baseGrd.addColorStop(0.4, `rgba(147, 51, 234, ${0.03 * globalAlphaMultiplier})`); baseGrd.addColorStop(1, 'transparent'); ctx.fillStyle = baseGrd; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             elements.forEach(el => {
+                let textScale = canvas.width < 640 ? el.size * 1.4 : el.size; // Amplify logo sizing context rules on small mobile views
                 let offsetX = (mouse.x - canvas.width / 2) * el.depth; let offsetY = (mouse.y - canvas.height / 2) * el.depth;
                 let renderX = (canvas.width * el.xP) + offsetX; let renderY = (canvas.height * el.yP) + offsetY;
                 if (el.type === 'text') {
-                    ctx.save(); ctx.font = `100 ${canvas.width * el.size}px -apple-system, sans-serif`; ctx.fillStyle = `rgba(255, 255, 255, ${0.035 * globalAlphaMultiplier})`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.letterSpacing = `${el.tracking}px`; ctx.fillText(el.text, renderX, renderY + Math.sin(pulseTime) * 12); ctx.restore();
+                    ctx.save(); ctx.font = `100 ${canvas.width * textScale}px -apple-system, sans-serif`; ctx.fillStyle = `rgba(255, 255, 255, ${0.03 * globalAlphaMultiplier})`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.letterSpacing = canvas.width < 640 ? '6px' : `${el.tracking}px`; ctx.fillText(el.text, renderX, renderY + Math.sin(pulseTime) * 12); ctx.restore();
                 } else if (el.type === 'flight') { ctx.save(); ctx.translate(renderX, renderY); ctx.rotate(el.angle + Math.sin(pulseTime * 1.5) * 0.05); drawFlight(ctx, 0, 0, el.size); ctx.restore();
                 } else if (el.type === 'hotel') { drawHotel(ctx, renderX, renderY + Math.cos(pulseTime * 0.8) * 8, el.size);
                 } else if (el.type === 'card') { drawPremiumCard(ctx, renderX, renderY + Math.sin(pulseTime * 1.2) * 10, el.width, el.height);
