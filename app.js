@@ -265,7 +265,6 @@ function formatPremiumDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('en-US', opts);
 }
 
-// Fixed compilation data logic function
 function compileItineraryHTML() {
     const title = document.getElementById('pkg-title').value || "Untitled Premium Package";
     const dest = document.getElementById('pkg-destination').value || "---";
@@ -314,7 +313,7 @@ function compileItineraryHTML() {
     });
 
     return `
-        <div style="padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; background: #ffffff;">
+        <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
                 <div>
                     <h2 style="font-size: 24px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
@@ -385,36 +384,46 @@ function updateLivePreview() {
     }
 }
 
-// FIXED: Master Background Isolation Printer Engine
+// FIXED: Added an explicit browser painting timeout delay parameter
 function generateProfessionalPDF() {
     const title = document.getElementById('pkg-title').value || "Quotation";
+    const exportBtn = document.getElementById('export-btn');
     
-    // 1. Instantiate an isolated processing node outside the viewport container
+    exportBtn.innerText = "Generating Layout...";
+    exportBtn.disabled = true;
+    
+    // 1. Setup isolated container inside the DOM tree context tracking
     const workerContainer = document.createElement('div');
-    workerContainer.style.position = 'absolute';
+    workerContainer.style.position = 'fixed';
     workerContainer.style.left = '-9999px';
     workerContainer.style.top = '-9999px';
-    workerContainer.style.width = '790px'; // Lock layout viewport structure to static true A4 context sizing
+    workerContainer.style.width = '794px'; // Enforces A4 resolution constraints cleanly
+    workerContainer.style.background = '#ffffff';
     workerContainer.innerHTML = compileItineraryHTML();
     
     document.body.appendChild(workerContainer);
 
-    const options = {
-        margin:       [12, 12, 12, 12],
-        filename:     `${title.replace(/\s+/g, '_')}_TravelWorldwide.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false, letterRendering: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    // 2. CRITICAL DELAY: Wait 400ms for browser to render elements prior to printing
+    setTimeout(() => {
+        const options = {
+            margin:       [10, 10, 10, 10],
+            filename:     `${title.replace(/\s+/g, '_')}_TravelWorldwide.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
 
-    // 2. Pass isolation target down through layout renderer stream channels
-    html2pdf().set(options).from(workerContainer).save().then(() => {
-        // 3. De-allocate processing workspace nodes gracefully from DOM tree context tracking
-        workerContainer.remove();
-    }).catch(err => {
-        console.error("PDF generation layout fault sequence:", err);
-        workerContainer.remove();
-    });
+        html2pdf().set(options).from(workerContainer).save().then(() => {
+            workerContainer.remove();
+            exportBtn.innerText = "Export Premium PDF";
+            exportBtn.disabled = false;
+        }).catch(err => {
+            console.error("PDF engine failure:", err);
+            workerContainer.remove();
+            exportBtn.innerText = "Export Premium PDF";
+            exportBtn.disabled = false;
+        });
+    }, 400); 
 }
 
 async function saveItineraryToSupabase() {
