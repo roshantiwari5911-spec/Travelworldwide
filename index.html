@@ -52,7 +52,6 @@
             border-color: rgba(255, 255, 255, 0.25) !important;
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.03);
         }
-        /* Mobile vs Desktop Drawer Layout Overrides */
         #ledger-drawer {
             transform: translateX(-105%);
             z-index: 100;
@@ -66,6 +65,7 @@
 
     <canvas id="bg-canvas"></canvas>
 
+    <!-- AUTHENTICATION SECURITY ACCESS GATE -->
     <div id="login-gate" class="w-full max-w-md glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl text-center premium-transition z-50">
         <div class="mb-2 text-[10px] font-bold tracking-[0.25em] text-indigo-400 uppercase">Proprietary Nexus</div>
         <h2 class="text-xl sm:text-2xl font-light tracking-wide text-white mb-6">Internal CRM Authentication</h2>
@@ -85,6 +85,7 @@
         </form>
     </div>
 
+    <!-- SAVED RECORDS LEDGER SLIDE OVERLAY DRAWER -->
     <div id="ledger-drawer" class="fixed top-0 left-0 h-full w-full sm:w-80 bg-[#09090e]/95 backdrop-blur-3xl border-r border-white/10 p-5 sm:p-6 shadow-2xl flex flex-col premium-transition">
         <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
             <div class="flex flex-col">
@@ -106,6 +107,7 @@
         </div>
     </div>
 
+    <!-- MAIN DASHBOARD ENVIRONMENT -->
     <main id="crm-workspace" class="w-full max-w-6xl glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-10 shadow-2xl hidden-workspace opacity-0 premium-transition z-45 relative">
         
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/10 pb-6 mb-6 sm:mb-8 gap-4">
@@ -139,6 +141,7 @@
             </div>
         </header>
 
+        <!-- MODULE 1: ITINERARY CONSOLE -->
         <div id="module-itinerary" class="grid grid-cols-1 lg:grid-cols-2 gap-8 transition-all duration-300">
             <section class="space-y-6 order-2 lg:order-1">
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
@@ -153,6 +156,7 @@
                     </div>
                 </div>
                 
+                <!-- Package Form Fields -->
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Package Title</label>
@@ -182,6 +186,7 @@
                     </div>
                 </div>
 
+                <!-- Flight Routing Management Section -->
                 <div class="border-t border-white/10 pt-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-medium text-white/80">Flight Routing Management</h3>
@@ -192,11 +197,13 @@
                     <div id="flights-container" class="space-y-4"></div>
                     
                     <div class="mt-4">
-                        <label class="block text-xs font-medium text-cyan-400 uppercase tracking-wider mb-2">Separate Airfare Quote (INR)</label>
-                        <input type="number" id="pkg-airfare" placeholder="Optional - Airfare Quote" class="w-full rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition">
+                        <label class="block text-xs font-medium text-cyan-400 uppercase tracking-wider mb-2">Separate Client Airfare Quote (INR)</label>
+                        <!-- Turned into a Read-Only Calculated Display Output Box -->
+                        <input type="number" id="pkg-airfare" readonly placeholder="Calculated from Flight Costs below..." class="w-full rounded-xl px-4 py-2.5 text-xs text-cyan-300 font-mono bg-cyan-950/20 border border-cyan-500/20 focus:outline-none cursor-not-allowed transition">
                     </div>
                 </div>
 
+                <!-- Accommodation Breakdown Section -->
                 <div class="border-t border-white/10 pt-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-medium text-white/80">Accommodation Breakdown</h3>
@@ -207,6 +214,7 @@
                     <div id="hotels-container" class="space-y-4"></div>
                 </div>
 
+                <!-- Day-Wise Details Section -->
                 <div class="border-t border-white/10 pt-6">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-medium text-white/80">Day-Wise Itinerary</h3>
@@ -217,6 +225,7 @@
                     <div id="days-container" class="space-y-4"></div>
                 </div>
 
+                <!-- Exclusions and Inclusions Fields -->
                 <div class="border-t border-white/10 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Custom Inclusions</label>
@@ -228,10 +237,31 @@
                     </div>
                 </div>
 
-                <div class="border-t border-white/10 pt-6 space-y-4">
+                <!-- NEW: Integrated Master Margin Analytics Calculator Desk Sheet -->
+                <div class="border-t border-white/20 bg-indigo-950/20 border border-indigo-500/10 rounded-2xl p-4 space-y-3">
+                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest block">Hidden Revenue Summary Analysis</span>
+                    <div class="grid grid-cols-3 gap-4 text-center font-mono text-xs">
+                        <div class="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                            <span class="text-[10px] text-gray-400 block mb-0.5">Total Net Cost</span>
+                            <span id="meta-net-cost" class="text-white font-semibold">₹0</span>
+                        </div>
+                        <div class="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                            <span class="text-[10px] text-gray-400 block mb-0.5">Net Margin Take</span>
+                            <span id="meta-profit-cost" class="text-indigo-300 font-semibold">₹0</span>
+                        </div>
+                        <div class="bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-500/10">
+                            <span class="text-[10px] text-emerald-400 block mb-0.5">Final Gross Quote</span>
+                            <span id="meta-gross-cost" class="text-emerald-400 font-bold">₹0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Action Layout Buttons -->
+                <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Land Package / Main Investment Price (INR)</label>
-                        <input type="number" id="pkg-price" placeholder="₹1,50,000" class="w-full rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-emerald-500/50 transition">
+                        <label class="block text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2">Calculated Land Package Client Investment (INR)</label>
+                        <!-- Made Read-Only to display calculated margin pricing metrics perfectly -->
+                        <input type="number" id="pkg-price" readonly placeholder="Calculated from Hotel & Vehicle Costs..." class="w-full rounded-xl px-4 py-3 text-sm font-bold tracking-wide text-emerald-400 bg-emerald-950/10 border border-emerald-500/20 focus:outline-none cursor-not-allowed transition">
                     </div>
                     <div class="flex flex-col sm:flex-row gap-3 pt-2">
                         <button id="save-btn" class="w-full sm:flex-1 bg-white/10 border border-white/20 text-white font-medium py-3.5 rounded-xl hover:bg-white/20 transition text-sm">Save to CRM</button>
@@ -240,6 +270,7 @@
                 </div>
             </section>
 
+            <!-- RIGHT REGION: LIVE PREVIEW CONTAINER -->
             <section class="lg:border-l lg:border-white/10 lg:pl-8 flex flex-col order-1 lg:order-2 w-full overflow-hidden">
                 <h2 class="text-md sm:text-lg font-medium text-white/90 mb-4 sm:mb-6">Live Premium Preview</h2>
                 <div class="w-full overflow-x-auto bg-white rounded-2xl p-2 sm:p-4 min-h-[500px] lg:min-h-[700px] shadow-inner">
@@ -248,6 +279,7 @@
             </section>
         </div>
 
+        <!-- MODULE 2: CUSTOMER DIRECTORY SYSTEM -->
         <div id="module-customers" class="hidden space-y-6 transition-all duration-300">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
                 <div class="bg-white/5 border border-white/5 rounded-2xl p-5 sm:p-6 h-fit space-y-4">
@@ -301,7 +333,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         window.addEventListener('mousemove', (e) => { mouse.targetX = e.clientX; mouse.targetY = e.clientY; });
-        // Touch move mapping parameters for responsive iOS canvas reactions
         window.addEventListener('touchmove', (e) => { if(e.touches.length > 0) { mouse.targetX = e.touches[0].clientX; mouse.targetY = e.touches[0].clientY; } });
 
         const elements = [
@@ -318,7 +349,7 @@
         }
         function drawHotel(ctx, x, y, size) { ctx.strokeStyle = `rgba(168, 85, 247, ${0.1 * globalAlphaMultiplier})`; ctx.lineWidth = 1; ctx.strokeRect(x - size * 0.4, y - size * 0.8, size * 0.8, size * 1.6); }
         function drawPremiumCard(ctx, x, y, w, h) { ctx.save(); ctx.translate(x, y); ctx.rotate(0.15); ctx.fillStyle = `rgba(255,255,255, ${0.02 * globalAlphaMultiplier})`; ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, 6); ctx.fill(); ctx.strokeStyle = `rgba(255,255,255, ${0.15 * globalAlphaMultiplier})`; ctx.stroke(); ctx.restore(); }
-        function drawCruise(ctx, x, y, size) { ctx.beginPath(); ctx.moveTo(x - size * 0.6, y + size * 0.2); ctx.lineTo(x + size * 0.5, y + size * 0.2); ctx.lineTo(x + size * 0.7, y - size * 0.1); ctx.lineTo(x - size * 0.5, y - size * 0.1); ctx.closePath(); ctx.fillStyle = `rgba(6, 182, 212, ${0.07 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * globalAlphaMultiplier})`; ctx.stroke(); }
+        function drawCruise(ctx, x, y, size) { ctx.beginPath(); ctx.moveTo(x - size * 0.6, y + size * 0.2); ctx.lineTo(x + size * 0.5, y + size * 0.2); ctx.lineTo(x + size * 0.7, y - size * 0.1); ctx.lineTo(x - size * 0.5, y - size * 0.1); ctx.closePath(); ctx.fillStyle = `rgba(6, 182, 212, ${0.07 * globalAlphaMultiplier})`; ctx.fill(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * globalAlphaMultiplier})`; stroke(); }
 
         function fadeEngineForWorkspace() {
             let fadeInterval = setInterval(() => {
@@ -335,7 +366,7 @@
             baseGrd.addColorStop(0, `rgba(99, 102, 241, ${0.1 * globalAlphaMultiplier})`); baseGrd.addColorStop(0.4, `rgba(147, 51, 234, ${0.03 * globalAlphaMultiplier})`); baseGrd.addColorStop(1, 'transparent'); ctx.fillStyle = baseGrd; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             elements.forEach(el => {
-                let textScale = canvas.width < 640 ? el.size * 1.4 : el.size; // Amplify logo sizing context rules on small mobile views
+                let textScale = canvas.width < 640 ? el.size * 1.4 : el.size;
                 let offsetX = (mouse.x - canvas.width / 2) * el.depth; let offsetY = (mouse.y - canvas.height / 2) * el.depth;
                 let renderX = (canvas.width * el.xP) + offsetX; let renderY = (canvas.height * el.yP) + offsetY;
                 if (el.type === 'text') {
