@@ -1,7 +1,13 @@
+// ====== SUPABASE CLOUD CONNECTION CONFIGURATION ======
+const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4cWhzeHlvZHN6YmZ3c3F2Y2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTIzMTgsImV4cCI6MjA5Njk4ODMxOH0._86b10n0y6WPasyJqdCX-MKxtXfXtVyYsW9cS3B43cQ";
+
+// Initialize the global Supabase client loader natively
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// =====================================================
+
 // Dynamic Day Counter Tracking
 let dayCount = 0;
-
-// Grab key UI elements from the DOM
 let addDayBtn, daysContainer, previewPane;
 
 // Core Package Inputs for real-time tracking
@@ -23,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Export PDF action button
     document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
+    
+    // Wire up the CRM Save Button directly to our database pipeline task
+    document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
 
     // Bootstrap first sample day on load
     addItineraryDay();
@@ -98,7 +107,6 @@ function updateLivePreview() {
 
     previewPane.innerHTML = `
         <div id="printable-pdf-area" style="padding: 10px; font-family: -apple-system, sans-serif; color: #1e293b;">
-            <!-- Luxury Branding Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px;">
                 <div>
                     <h2 style="font-size: 22px; font-weight: 800; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
@@ -110,7 +118,6 @@ function updateLivePreview() {
                 </div>
             </div>
 
-            <!-- Meta Details Overview Grid -->
             <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
                 <div><strong style="color: #475569;">Package Title:</strong> <span style="color: #0f172a; font-weight: 500;">${title}</span></div>
                 <div><strong style="color: #475569;">Destination:</strong> <span style="color: #0f172a; font-weight: 500;">${dest}</span></div>
@@ -119,13 +126,11 @@ function updateLivePreview() {
                 <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
             </div>
 
-            <!-- Itinerary Section -->
             <div style="margin-bottom: 25px;">
                 <h3 style="font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 16px;">Day-Wise Details</h3>
                 ${daysHtml || '<p style="color:#94a3b8; font-style:italic; font-size:12px;">No days added yet.</p>'}
             </div>
 
-            <!-- Inclusions / Exclusions Layout Block -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 30px; page-break-inside: avoid;">
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #16a34a; text-transform: uppercase; margin: 0 0 8px 0;">✓ Standard Inclusions</h4>
@@ -145,7 +150,6 @@ function updateLivePreview() {
                 </div>
             </div>
 
-            <!-- Pricing Block -->
             <div style="background: #0f172a; color: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
                 <div>
                     <span style="font-size: 10px; text-transform: uppercase; tracking: 0.5px; color: #94a3b8; display:block;">Total Net Investment</span>
@@ -173,4 +177,87 @@ function generateProfessionalPDF() {
     };
     
     html2pdf().set(options).from(element).save();
+}
+
+// Pure Async Pipeline to Save Itinerary Data directly to Supabase Tables
+async function saveItineraryToSupabase() {
+    const saveBtn = document.getElementById('save-btn');
+    const originalText = saveBtn.innerText;
+    
+    saveBtn.innerText = "Saving to Cloud...";
+    saveBtn.style.opacity = "0.6";
+
+    const title = document.getElementById('pkg-title').value;
+    const destination = document.getElementById('pkg-destination').value;
+    const startDate = document.getElementById('pkg-date').value || null;
+    const numberOfPeople = parseInt(document.getElementById('pkg-pax').value) || 1;
+    const vehicleUsed = document.getElementById('pkg-vehicle').value;
+    const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
+
+    if (!title || !destination) {
+        alert("Please provide at least a Title and Destination to save this quotation.");
+        saveBtn.innerText = originalText;
+        saveBtn.style.opacity = "1";
+        return;
+    }
+
+    try {
+        const { data: itineraryData, error: itinError } = await supabase
+            .from('itineraries')
+            .insert([{
+                title,
+                destination,
+                start_date: startDate,
+                number_of_people: numberOfPeople,
+                vehicle_used: vehicleUsed,
+                total_price: totalPrice,
+                inclusions: [
+                    "Premium accommodations as detailed above",
+                    "All airport transfers and local sightseeing via private AC vehicle",
+                    "Daily gourmet breakfast at the hotel properties"
+                ],
+                exclusions: [
+                    "International or domestic flight tickets",
+                    "Personal laundry, tips, and items outside mentioned meals",
+                    "Travel insurance or emergency documentation support"
+                ]
+            }])
+            .select();
+
+        if (itinError) throw itinError;
+        
+        const newItineraryId = itineraryData[0].id;
+        const dayBlocks = daysContainer.children;
+        const daysPayload = Array.from(dayBlocks).map((block, index) => {
+            return {
+                itinerary_id: newItineraryId,
+                day_number: index + 1,
+                day_title: block.querySelector('.day-title-input').value || `Day ${index + 1} Activity`,
+                description: block.querySelector('.day-desc-input').value || 'Details to follow.'
+            };
+        });
+
+        if (daysPayload.length > 0) {
+            const { error: daysError } = await supabase
+                .from('itinerary_days')
+                .insert(daysPayload);
+            
+            if (daysError) throw daysError;
+        }
+
+        saveBtn.innerText = "✓ Saved Successfully";
+        saveBtn.style.backgroundColor = "#059669"; 
+        
+        setTimeout(() => {
+            saveBtn.innerText = originalText;
+            saveBtn.style.backgroundColor = ""; 
+            saveBtn.style.opacity = "1";
+        }, 2500);
+
+    } catch (err) {
+        console.error("Database operation failed:", err);
+        alert(`Could not sync to cloud: ${err.message || err}`);
+        saveBtn.innerText = originalText;
+        saveBtn.style.opacity = "1";
+    }
 }
