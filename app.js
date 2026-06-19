@@ -8,7 +8,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 let dayCount = 0;
 let hotelCount = 0;
 let flightCount = 0;
-let standaloneHotelCount = 0; // Distinct counter parameter for standalones
+let standaloneHotelCount = 0; 
 let activeItineraryId = null; 
 
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
@@ -33,11 +33,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     tabItinerary = document.getElementById('tab-itinerary');
     tabCustomers = document.getElementById('tab-customers');
-    tabHotels = document.getElementById('tab-hotels'); // Red box hook
+    tabHotels = document.getElementById('tab-hotels'); 
     
     moduleItinerary = document.getElementById('module-itinerary');
     moduleCustomers = document.getElementById('module-customers');
-    moduleHotels = document.getElementById('module-hotels'); // Voucher grid system block
+    moduleHotels = document.getElementById('module-hotels'); 
     
     pkgCustomerSelect = document.getElementById('pkg-customer-select');
     customerTableRows = document.getElementById('customer-table-rows');
@@ -52,7 +52,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     openLedgerBtn = document.getElementById('open-ledger-btn');
     closeLedgerBtn = document.getElementById('close-ledger-btn');
 
-    // Standalone hotel form node declarations
     standaloneHotelsList = document.getElementById('standalone-hotels-list');
     standaloneHotelSaveBtn = document.getElementById('standalone-hotel-save-btn');
     standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn');
@@ -108,7 +107,7 @@ async function checkExistingAuthSession() {
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session auto-check completed.");
+        console.warn("Session tracking loaded.");
     }
 }
 
@@ -386,9 +385,10 @@ function updateLivePreview() {
 }
 
 // =========================================================================
-// ====== NEW: STANDALONE HOTEL QUOTATION GENERATOR DESK FUNCTIONALITIES ======
+// ====== STANDALONE HOTEL QUOTATION GENERATOR DESK FUNCTIONALITIES ======
 // =========================================================================
 
+// UPGRADED: Dynamic generator includes Adults, Kids, "3 Star Deluxe" type, and raw B2B copy-paste text box fields
 function addStandaloneHotelBlock() {
     standaloneHotelCount++;
     const hotelBlock = document.createElement('div');
@@ -426,12 +426,26 @@ function addStandaloneHotelBlock() {
                 </div>
             </div>
 
+            <!-- NEW: Integrated Adult and Kid Passenger Allocation Segment Grid Rows -->
+            <div class="grid grid-cols-2 gap-3 bg-white/[0.01] border border-white/5 p-2 rounded-xl">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Number of Adults</label>
+                    <input type="number" value="2" min="1" class="sh-adults w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none" oninput="updateHotelVoucherLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Number of Kids</label>
+                    <input type="number" value="0" min="0" class="sh-kids w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none" oninput="updateHotelVoucherLivePreview()">
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Star Rating Classification</label>
                     <select class="sh-category w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none" onchange="updateHotelVoucherLivePreview()">
                         <option value="5 Star Luxury">5 Star Luxury Property</option>
                         <option value="4 Star Premium">4 Star Premium Property</option>
+                        <!-- NEW: Injected 3 Star Deluxe Option parameters -->
+                        <option value="3 Star Deluxe">3 Star Deluxe Property</option>
                         <option value="3 Star Standard" selected>3 Star Standard Property</option>
                     </select>
                 </div>
@@ -439,6 +453,14 @@ function addStandaloneHotelBlock() {
                     <label class="block text-[10px] text-emerald-400 uppercase tracking-wider mb-1 pl-0.5">Custom Quoted Amount (INR)</label>
                     <input type="number" placeholder="e.g., 24500" class="sh-price w-full bg-white/5 border border-emerald-500/20 rounded-xl px-3 py-2.5 text-emerald-400 text-sm font-semibold font-mono focus:outline-none" oninput="updateHotelVoucherLivePreview()">
                 </div>
+            </div>
+
+            <!-- NEW: Integrated Portal Copy-Paste Amenities Container Box -->
+            <div>
+                <label class="block text-[10px] text-indigo-300 uppercase tracking-wider mb-1 pl-0.5 flex items-center gap-1">
+                    <i data-lucide="clipboard-paste" class="h-3 w-3"></i> Hotel Amenities / Details (Paste from B2B Portal)
+                </label>
+                <textarea placeholder="Paste amenities or custom specs directly here (e.g. Free Wi-Fi, Ocean View, King Bed, Deluxe Room, No Cancellation)..." rows="3" class="sh-amenities w-full rounded-xl px-3 py-2.5 text-xs text-slate-300 bg-white/5 focus:outline-none resize-none" oninput="updateHotelVoucherLivePreview()"></textarea>
             </div>
         </div>
     `;
@@ -491,7 +513,7 @@ function calculateStandaloneNights(id) {
     updateHotelVoucherLivePreview();
 }
 
-// COMPILES VOUCHERS MATCHING AGODA/MAKEMYTRIP MINIMALIST HIGH-END METRICS LAYOUT
+// UPGRADED VOUCHER MARKUP GENERATES SHARP BEDDING GRID AND B2B PORTAL AMENITY BLOCKS
 function compileHotelVoucherHTML() {
     const blocks = standaloneHotelsList ? standaloneHotelsList.children : [];
     let vouchersContentHtml = '';
@@ -504,52 +526,77 @@ function compileHotelVoucherHTML() {
         const hNights = block.querySelector('.sh-nights').value || '0 Nights';
         const hCategory = block.querySelector('.sh-category').value;
         const hPrice = parseFloat(block.querySelector('.sh-price').value) || 0;
+        
+        // CAPTURE NEW ADULT, KID, AND PORTAL AMENITIES VALUES
+        const hAdults = parseInt(block.querySelector('.sh-adults').value) || 2;
+        const hKids = parseInt(block.querySelector('.sh-kids').value) || 0;
+        const rawAmenities = block.querySelector('.sh-amenities').value.trim();
 
         totalGrossQuotationAggregate += hPrice;
 
+        // Process raw copied text into responsive checklist lists row objects
+        let portalAmenitiesHtml = '';
+        if (rawAmenities) {
+            const lines = rawAmenities.split('\n').filter(line => line.trim() !== "");
+            portalAmenitiesHtml = lines.map(line => `
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; color: #334155;">
+                    <span style="color: #10b981; font-weight: bold;">✔</span> ${line.trim()}
+                </div>
+            `).join('');
+        } else {
+            portalAmenitiesHtml = `
+                <div style="color: #94a3b8; font-style: italic; font-size: 11px;">No custom portal specifications input listed.</div>
+            `;
+        }
+
         vouchersContentHtml += `
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 24px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.02); page-break-inside: avoid;">
-                <!-- Upper Header Block Segment -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #cbd5e1; padding-bottom: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #cbd5e1; padding-bottom: 16px; margin-bottom: 18px;">
                     <div>
                         <span style="font-size: 10px; font-weight: 700; color: #10b981; background: #ecfdf5; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; tracking: 0.5px; display: inline-block; margin-bottom: 8px;">Voucher Segment 0${index + 1}</span>
                         <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3;">${hName}</h3>
-                        <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">Classification: <span style="color: #4f46e5;">${hCategory}</span></p>
+                        <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">Classification: <span style="color: #4f46e5; font-weight: 700;">${hCategory}</span></p>
                     </div>
                     <div style="text-align: right;">
-                        <span style="font-size: 11px; font-weight: 700; color: #ffffff; background: #0f172a; px: 12px; padding: 6px 12px; border-radius: 8px; display: inline-block; text-transform: uppercase;">CONFIRMED</span>
+                        <span style="font-size: 11px; font-weight: 700; color: #ffffff; background: #0f172a; padding: 6px 12px; border-radius: 8px; display: inline-block; text-transform: uppercase; tracking: 0.5px;">CONFIRMED</span>
                     </div>
                 </div>
 
-                <!-- Agoda Style Dual Check Grid Panels -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+                <!-- Agoda Style Core Logistical Grid Panels -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #f8fafc; padding: 14px; border-radius: 12px; margin-bottom: 18px; border: 1px solid #f1f5f9;">
                     <div>
-                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-IN TIME</span>
-                        <strong style="font-size: 13px; color: #0f172a; display: block;">${hIn}</strong>
+                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-IN</span>
+                        <strong style="font-size: 12.5px; color: #0f172a; display: block;">${hIn}</strong>
                         <span style="font-size: 10px; color: #94a3b8;">From 14:00 hrs</span>
                     </div>
-                    <div style="border-left: 1px solid #e2e8f0; padding-left: 16px;">
-                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-OUT TIME</span>
-                        <strong style="font-size: 13px; color: #0f172a; display: block;">${hOut}</strong>
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;">
+                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-OUT</span>
+                        <strong style="font-size: 12.5px; color: #0f172a; display: block;">${hOut}</strong>
                         <span style="font-size: 10px; color: #94a3b8;">Until 12:00 hrs</span>
                     </div>
-                    <div style="border-left: 1px solid #e2e8f0; padding-left: 16px; text-align: center; display: flex; flex-col; justify-content: center; flex-direction: column; align-items: center;">
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;">
                         <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">STAY LENGTH</span>
-                        <strong style="font-size: 14px; color: #4f46e5; font-weight: 800;">${hNights}</strong>
+                        <strong style="font-size: 13.5px; color: #4f46e5; font-weight: 800;">${hNights}</strong>
                     </div>
                 </div>
 
-                <!-- Inclusion Framework Details -->
-                <div style="font-size: 11.5px; color: #475569; line-height: 1.5; background: #fafafa; border: 1px dashed #e2e8f0; padding: 12px 16px; border-radius: 8px;">
-                    <div style="font-weight: 700; color: #334155; margin-bottom: 4px; font-size: 11px; text-transform: uppercase;">Voucher Booking Inclusions:</div>
-                    • Double Room Standard Inventory Accommodation Arrangement<br>
-                    • Daily Gourmet Managed Breakfast Buffet Spread inside the Main Resto Lounge<br>
-                    • Full Access Privileges to On-Site Leisure Facilities & Pool Decks
+                <!-- NEW: Dynamic Guest Occupancy Vector Summary Row Panel -->
+                <div style="display: flex; gap: 20px; align-items: center; background: #eef2ff; padding: 10px 14px; border-radius: 10px; margin-bottom: 18px; font-size: 12px; color: #3730a3; font-weight: 600; border: 1px solid #e0e7ff;">
+                    <div style="display: flex; align-items: center; gap: 4px;">👥 <strong>Occupancy Allotted:</strong></div>
+                    <div>👤 ${hAdults} Adult${hAdults > 1 ? 's' : ''}</div>
+                    ${hKids > 0 ? `<div style="border-left: 1px solid #c7d2fe; padding-left: 16px;">👶 ${hKids} Child${hKids > 1 ? 'ren' : ''}</div>` : ''}
                 </div>
 
-                <!-- Row Pricing Grid Allocation -->
+                <!-- NEW: Beautifully Rendered B2B Portal Injected Amenities Matrix Field -->
+                <div style="background: #fafafa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+                    <div style="font-size: 10.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; tracking: 0.5px; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">Property Amenities & Room Specifications</div>
+                    <div style="display: grid; grid-template-columns: 1fr; sm:grid-template-columns: 1fr 1fr; gap: 4px 16px;">
+                        ${portalAmenitiesHtml}
+                    </div>
+                </div>
+
                 <div style="margin-top: 16px; text-align: right; font-size: 12px; color: #475569;">
-                    Room Segment Value: <strong style="color: #0f172a; font-size: 14px; font-family: monospace;">₹${Math.round(hPrice).toLocaleString('en-IN')}/-</strong>
+                    Room Segment Value: <strong style="color: #10b981; font-size: 14.5px; font-family: monospace; font-weight: 700;">Leveled Quote</strong>
                 </div>
             </div>
         `;
@@ -557,7 +604,6 @@ function compileHotelVoucherHTML() {
 
     return `
         <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
-            <!-- Document Header Component -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 25px;">
                 <div>
                     <h2 style="font-size: 22px; font-weight: 900; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
@@ -569,10 +615,8 @@ function compileHotelVoucherHTML() {
                 </div>
             </div>
 
-            <!-- Inject Row List Content -->
             ${vouchersContentHtml || '<p style="color:#94a3b8; font-style:italic; font-size:12px; text-align:center; padding:40px 0;">No active properties allocated inside the voucher workspace desk ledger yet.</p>'}
 
-            <!-- Centralized Master Financial Subtotal Receipt Block -->
             ${blocks.length > 0 ? `
             <div style="margin-top: 30px; background: #0f172a; color: #ffffff; border-radius: 14px; padding: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(0,0,0,0.05); page-break-inside: avoid;">
                 <div>
@@ -585,7 +629,6 @@ function compileHotelVoucherHTML() {
             </div>
             ` : ''}
 
-            <!-- Footer Term Guidelines Summary Block -->
             <div style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 10px; color: #94a3b8; line-height: 1.5; page-break-inside: avoid;">
                 <strong>Important Voucher Guidelines:</strong> This document represents an official boutique booking summary quote curated by Travel World Wide. Room confirmations remain subject to live hotel block inventory availability indices upon direct payment routing sequences. Individual passport identification maps must be provided during properties check-in protocols.
             </div>
@@ -650,11 +693,13 @@ async function saveStandaloneHotelsToSupabase() {
             check_out: block.querySelector('.sh-out').value || null,
             nights: parseInt(block.querySelector('.sh-nights').value) || 0,
             category: block.querySelector('.sh-category').value,
-            price: val
+            price: val,
+            adults: parseInt(block.querySelector('.sh-adults').value) || 2,
+            kids: parseInt(block.querySelector('.sh-kids').value) || 0,
+            portal_amenities: block.querySelector('.sh-amenities').value
         };
     });
 
-    // Pushes standalone items seamlessly as a standardized row format packet to your itineraries schema bucket
     const payload = {
         title: "[HOTEL VOUCHER] " + firstHotelTitle,
         destination: "Standalone Hotel Request",
@@ -1265,3 +1310,6 @@ window.addStandaloneHotelBlock = addStandaloneHotelBlock;
 window.removeStandaloneHotelBlock = removeStandaloneHotelBlock;
 window.calculateStandaloneNights = calculateStandaloneNights;
 window.updateHotelVoucherLivePreview = updateHotelVoucherLivePreview;
+</script>
+</body>
+</html>
