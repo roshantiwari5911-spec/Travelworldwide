@@ -1,16 +1,27 @@
 // ====== SUPABASE CLOUD CONNECTION CONFIGURATION ======
 const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4cWhzeHlvZHN6YmZ3c3F2Y2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTIzMTgsImV4cCI6MjA5Njk4ODMxOH0._86b10n0y6WPasyJqdCX-MKxtXfXtVyYsW9cS3B43cQ";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let dayCount = 0, hotelCount = 0, flightCount = 0, standaloneHotelCount = 0, activeItineraryId = null; 
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// =====================================================
+
+let dayCount = 0;
+let hotelCount = 0;
+let flightCount = 0;
+let standaloneHotelCount = 0; 
+let activeItineraryId = null; 
+
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
 let tabItinerary, tabCustomers, tabHotels, moduleItinerary, moduleCustomers, moduleHotels;
 let pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge, ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
 let standaloneHotelsList, standaloneHotelSaveBtn, standaloneHotelExportBtn, hotelVoucherPreviewPane;
 
-const coreInputIds = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-inclusions', 'pkg-exclusions', 'dmc-net-cost', 'dmc-markup-pct', 'pkg-price', 'pkg-airfare'];
+const coreInputIds = [
+    'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
+    'pkg-inclusions', 'pkg-exclusions', 'dmc-net-cost', 'dmc-markup-pct', 
+    'pkg-price', 'pkg-airfare'
+];
 
 function formatPremiumDate(dateStr) {
     if (!dateStr || dateStr === "---") return "---";
@@ -18,80 +29,161 @@ function formatPremiumDate(dateStr) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    addDayBtn = document.getElementById('add-day-btn'); addHotelBtn = document.getElementById('add-hotel-btn'); addFlightBtn = document.getElementById('add-flight-btn');
-    daysContainer = document.getElementById('days-container'); hotelsContainer = document.getElementById('hotels-container'); flightsContainer = document.getElementById('flights-container');
-    previewPane = document.getElementById('pdf-preview-pane'); loginGate = document.getElementById('login-gate'); crmWorkspace = document.getElementById('crm-workspace');
-    tabItinerary = document.getElementById('tab-itinerary'); tabCustomers = document.getElementById('tab-customers'); tabHotels = document.getElementById('tab-hotels');
-    moduleItinerary = document.getElementById('module-itinerary'); moduleCustomers = document.getElementById('module-customers'); moduleHotels = document.getElementById('module-hotels');
-    pkgCustomerSelect = document.getElementById('pkg-customer-select'); customerTableRows = document.getElementById('customer-table-rows');
-    addCustSubmitBtn = document.getElementById('add-cust-submit-btn'); logoutBtn = document.getElementById('logout-btn');
-    savedItinerariesLedger = document.getElementById('saved-itineraries-ledger'); clearWorkspaceBtn = document.getElementById('clear-workspace-btn');
-    activeRecordBadge = document.getElementById('active-record-badge'); ledgerDrawer = document.getElementById('ledger-drawer');
-    openLedgerBtn = document.getElementById('open-ledger-btn'); closeLedgerBtn = document.getElementById('close-ledger-btn');
-    standaloneHotelsList = document.getElementById('standalone-hotels-list'); standaloneHotelSaveBtn = document.getElementById('standalone-hotel-save-btn');
-    standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn'); hotelVoucherPreviewPane = document.getElementById('hotel-voucher-preview-pane');
+    addDayBtn = document.getElementById('add-day-btn');
+    addHotelBtn = document.getElementById('add-hotel-btn');
+    addFlightBtn = document.getElementById('add-flight-btn');
+    daysContainer = document.getElementById('days-container');
+    hotelsContainer = document.getElementById('hotels-container');
+    flightsContainer = document.getElementById('flights-container');
+    previewPane = document.getElementById('pdf-preview-pane');
+    loginGate = document.getElementById('login-gate');
+    crmWorkspace = document.getElementById('crm-workspace');
+    
+    tabItinerary = document.getElementById('tab-itinerary');
+    tabCustomers = document.getElementById('tab-customers');
+    tabHotels = document.getElementById('tab-hotels'); 
+    
+    moduleItinerary = document.getElementById('module-itinerary');
+    moduleCustomers = document.getElementById('module-customers');
+    moduleHotels = document.getElementById('module-hotels'); 
+    
+    pkgCustomerSelect = document.getElementById('pkg-customer-select');
+    customerTableRows = document.getElementById('customer-table-rows');
+    addCustSubmitBtn = document.getElementById('add-cust-submit-btn');
+    logoutBtn = document.getElementById('logout-btn');
+    
+    savedItinerariesLedger = document.getElementById('saved-itineraries-ledger');
+    clearWorkspaceBtn = document.getElementById('clear-workspace-btn');
+    activeRecordBadge = document.getElementById('active-record-badge');
+    
+    ledgerDrawer = document.getElementById('ledger-drawer');
+    openLedgerBtn = document.getElementById('open-ledger-btn');
+    closeLedgerBtn = document.getElementById('close-ledger-btn');
+
+    standaloneHotelsList = document.getElementById('standalone-hotels-list');
+    standaloneHotelSaveBtn = document.getElementById('standalone-hotel-save-btn');
+    standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn');
+    hotelVoucherPreviewPane = document.getElementById('hotel-voucher-preview-pane');
 
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
     tabHotels?.addEventListener('click', () => switchCrmModule('hotels'));
+    
     addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
     logoutBtn?.addEventListener('click', executeWorkspaceSignOut);
     clearWorkspaceBtn?.addEventListener('click', resetBuilderWorkspaceForm);
+
     openLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(true));
     closeLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(false));
+
     document.getElementById('standalone-add-hotel-btn')?.addEventListener('click', addStandaloneHotelBlock);
     standaloneHotelExportBtn?.addEventListener('click', generateStandaloneHotelPDF);
     standaloneHotelSaveBtn?.addEventListener('click', saveStandaloneHotelsToSupabase);
+
     document.getElementById('login-submit-btn')?.addEventListener('click', handleWorkspaceLogin);
 
-    coreInputIds.forEach(id => document.getElementById(id)?.addEventListener('input', updateLivePreview));
+    coreInputIds.forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateLivePreview);
+    });
+
     addDayBtn?.addEventListener('click', addItineraryDay);
     addHotelBtn?.addEventListener('click', addHotelStayBlock);
     addFlightBtn?.addEventListener('click', addFlightSectorBlock);
+    
     document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
 
     checkExistingAuthSession();
 });
 
-function toggleLedgerDrawer(s) { if (s) { ledgerDrawer?.classList.add('open'); fetchAndRenderItinerariesLedger(); } else { ledgerDrawer?.classList.remove('open'); } }
+function toggleLedgerDrawer(s) { 
+    if (s) { 
+        ledgerDrawer?.classList.add('open'); 
+        fetchAndRenderItinerariesLedger(); 
+    } else { 
+        ledgerDrawer?.classList.remove('open'); 
+    } 
+}
 
 async function checkExistingAuthSession() {
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) { if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace(); unlockPremiumWorkspace(); }
+        if (session) { 
+            if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace(); 
+            unlockPremiumWorkspace(); 
+        }
     } catch (e) { console.warn(e); }
 }
 
 async function executeWorkspaceSignOut() {
-    try { await supabaseClient.auth.signOut(); crmWorkspace.style.opacity = "0"; setTimeout(() => window.location.reload(), 500); } catch (e) { alert(e.message); }
+    try { 
+        await supabaseClient.auth.signOut(); 
+        crmWorkspace.style.opacity = "0"; 
+        setTimeout(() => window.location.reload(), 500); 
+    } catch (e) { alert(e.message); }
 }
 
 function switchCrmModule(m) {
     const un = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
     const sel = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
-    tabItinerary.className = un; tabCustomers.className = un; tabHotels.className = un + " border border-dashed border-indigo-500/30";
-    moduleItinerary.classList.add('hidden'); moduleCustomers.classList.add('hidden'); moduleHotels.classList.add('hidden');
-    if (m === 'itinerary') { tabItinerary.className = sel; moduleItinerary.classList.remove('hidden'); if (openLedgerBtn) openLedgerBtn.style.display = 'flex'; updateLivePreview(); }
-    else if (m === 'customers') { tabCustomers.className = sel; moduleCustomers.classList.remove('hidden'); if (openLedgerBtn) openLedgerBtn.style.display = 'none'; toggleLedgerDrawer(false); fetchAndRenderCustomerBase(); }
-    else if (m === 'hotels') { tabHotels.className = sel + " border border-indigo-500/50"; moduleHotels.classList.remove('hidden'); if (openLedgerBtn) openLedgerBtn.style.display = 'none'; toggleLedgerDrawer(false); if (standaloneHotelsList?.children.length === 0) addStandaloneHotelBlock(); else updateHotelVoucherLivePreview(); }
+    
+    tabItinerary.className = un; 
+    tabCustomers.className = un; 
+    tabHotels.className = un + " border border-dashed border-indigo-500/30";
+    
+    moduleItinerary.classList.add('hidden'); 
+    moduleCustomers.classList.add('hidden'); 
+    moduleHotels.classList.add('hidden');
+    
+    if (m === 'itinerary') { 
+        tabItinerary.className = sel; 
+        moduleItinerary.classList.remove('hidden'); 
+        if (openLedgerBtn) openLedgerBtn.style.display = 'flex'; 
+        updateLivePreview(); 
+    } else if (m === 'customers') { 
+        tabCustomers.className = sel; 
+        moduleCustomers.classList.remove('hidden'); 
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none'; 
+        toggleLedgerDrawer(false); 
+        fetchAndRenderCustomerBase(); 
+    } else if (m === 'hotels') { 
+        tabHotels.className = sel + " border border-indigo-500/50"; 
+        moduleHotels.classList.remove('hidden'); 
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none'; 
+        toggleLedgerDrawer(false); 
+        if (standaloneHotelsList?.children.length === 0) addStandaloneHotelBlock(); else updateHotelVoucherLivePreview(); 
+    }
     if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function unlockPremiumWorkspace() {
     loginGate.style.opacity = "0";
-    setTimeout(() => { loginGate.style.display = "none"; crmWorkspace.classList.remove('hidden-workspace'); setTimeout(() => { crmWorkspace.style.opacity = "1"; fetchAndRenderCustomerBase(); resetBuilderWorkspaceForm(); }, 50); }, 500);
+    setTimeout(() => { 
+        loginGate.style.display = "none"; 
+        crmWorkspace.classList.remove('hidden-workspace'); 
+        setTimeout(() => { 
+            crmWorkspace.style.opacity = "1"; 
+            fetchAndRenderCustomerBase(); 
+            resetBuilderWorkspaceForm(); 
+        }, 50); 
+    }, 500);
 }
 
 function resetBuilderWorkspaceForm() {
-    activeItineraryId = null; if (activeRecordBadge) activeRecordBadge.classList.add('hidden');
+    activeItineraryId = null; 
+    if (activeRecordBadge) activeRecordBadge.classList.add('hidden');
     coreInputIds.forEach(id => {
         const el = document.getElementById(id); if (!el) return;
         if (id === 'pkg-inclusions') el.value = "Premium accommodations as detailed above\nAll airport transfers and local sightseeing via private AC vehicle\nDaily gourmet breakfast at the hotel properties";
         else if (id === 'pkg-exclusions') el.value = "International or domestic flight tickets\nPersonal laundry, tips, and items outside mentioned meals\nTravel insurance or emergency documentation support";
-        else if (id === 'dmc-markup-pct') el.value = '0'; else el.value = '';
+        else if (id === 'dmc-markup-pct') el.value = '0'; 
+        else el.value = '';
     });
-    if (pkgCustomerSelect) pkgCustomerSelect.value = ''; if (flightsContainer) flightsContainer.innerHTML = ''; if (hotelsContainer) hotelsContainer.innerHTML = ''; if (daysContainer) daysContainer.innerHTML = '';
+    if (pkgCustomerSelect) pkgCustomerSelect.value = ''; 
+    if (flightsContainer) flightsContainer.innerHTML = ''; 
+    if (hotelsContainer) hotelsContainer.innerHTML = ''; 
+    if (daysContainer) daysContainer.innerHTML = '';
+    
     dayCount = 0; hotelCount = 0; flightCount = 0;
     addFlightSectorBlock(); addHotelStayBlock(); addItineraryDay(); calculateMarginMetrics();
 }
@@ -131,8 +223,10 @@ async function loadSavedItineraryIntoWorkspace(id) {
         document.getElementById('pkg-exclusions').value = Array.isArray(itin.exclusions) ? itin.exclusions.join('\n') : '';
         if (document.getElementById('dmc-net-cost')) document.getElementById('dmc-net-cost').value = itin.dmc_net_cost || '';
         if (document.getElementById('dmc-markup-pct')) document.getElementById('dmc-markup-pct').value = itin.dmc_markup_pct || '0';
+        
         flightsContainer.innerHTML = ''; hotelsContainer.innerHTML = ''; daysContainer.innerHTML = '';
         flightCount = 0; hotelCount = 0; dayCount = 0;
+        
         if (Array.isArray(itin.flight_details)) {
             itin.flight_details.forEach(fl => {
                 addFlightSectorBlock(); const c = flightsContainer.lastChild;
@@ -169,12 +263,20 @@ function calculateMarginMetrics() {
 
     if (document.getElementById('pkg-price')) document.getElementById('pkg-price').value = Math.round(landGross);
     if (document.getElementById('pkg-airfare')) document.getElementById('pkg-airfare').value = Math.round(flGross);
-    document.getElementById('meta-net-cost').innerText = `₹${Math.round(flNet + dmcNet).toLocaleString('en-IN')}`;
-    document.getElementById('meta-profit-cost').innerText = `₹${Math.round(finalGross - (flNet + dmcNet)).toLocaleString('en-IN')}`;
-    document.getElementById('meta-gross-cost').innerText = `₹${Math.round(finalGross).toLocaleString('en-IN')}`;
+    
+    const netLabel = document.getElementById('meta-net-cost');
+    const profitLabel = document.getElementById('meta-profit-cost');
+    const grossLabel = document.getElementById('meta-gross-cost');
+
+    if (netLabel) netLabel.innerText = `₹${Math.round(flNet + dmcNet).toLocaleString('en-IN')}`;
+    if (profitLabel) profitLabel.innerText = `₹${Math.round(finalGross - (flNet + dmcNet)).toLocaleString('en-IN')}`;
+    if (grossLabel) grossLabel.innerText = `₹${Math.round(finalGross).toLocaleString('en-IN')}`;
 }
 
-function updateLivePreview() { calculateMarginMetrics(); if (previewPane) previewPane.innerHTML = compileItineraryHTML(); }
+function updateLivePreview() { 
+    calculateMarginMetrics(); 
+    if (previewPane) previewPane.innerHTML = compileItineraryHTML(); 
+}
 
 function compileItineraryHTML() {
     const title = document.getElementById('pkg-title')?.value || "Boutique Experience Proposal";
@@ -204,9 +306,15 @@ function compileItineraryHTML() {
 
     return `
         <div style="padding:24px; font-family:-apple-system, sans-serif; background:#fff; color:#1f2937;">
-            <div style="display:flex; justify-content:between; align-items:center; border-bottom:2px solid #111827; padding-bottom:14px; margin-bottom:20px;">
-                <div><h2 style="font-size:22px; font-weight:900; margin:0;">TRAVEL WORLD WIDE</h2><p style="font-size:10px; color:#4b5563; margin:2px 0 0 0; uppercase; tracking:1px;">Experience Portfolio</p></div>
-                <div style="text-align:right; font-size:11px; color:#4b5563;"><p style="margin:0; font-weight:700;">salestravelworldwide@gmail.com</p></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #111827; padding-bottom:14px; margin-bottom:20px;">
+                <div>
+                    <h2 style="font-size:22px; font-weight:900; margin:0; tracking:-0.5px;">TRAVEL WORLD WIDE</h2>
+                    <p style="font-size:10px; color:#4b5563; margin:2px 0 0 0; text-transform:uppercase; tracking:1.5px; font-weight:700;">Bridging Gaps</p>
+                </div>
+                <div style="text-align:right; font-size:11px; color:#4b5563; line-height:1.45;">
+                    <p style="margin:0; font-weight:700; color:#111827;">salestravelworldwide@gmail.com</p>
+                    <p style="margin:0; font-weight:500;">+91 88926 89595</p>
+                </div>
             </div>
             <div style="background:#f9fafb; border-radius:12px; padding:14px; margin-bottom:20px; display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11.5px; border:1px solid #e5e7eb;">
                 <div><strong>Experience:</strong> ${title}</div><div><strong>Destination:</strong>📍 ${dest}</div>
@@ -220,7 +328,7 @@ function compileItineraryHTML() {
                 <div><h4 style="font-size:10px; color:#10b981; margin:0 0 6px 0;">✓ Inclusions</h4><ul style="font-size:10.5px; color:#4b5563; padding:0; margin:0;">${inc}</ul></div>
                 <div><h4 style="font-size:10px; color:#ef4444; margin:0 0 6px 0;">✕ Exclusions</h4><ul style="font-size:10.5px; color:#4b5563; padding:0; margin:0;">${exc}</ul></div>
             </div>
-            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:between; align-items:center;">
+            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center;">
                 <div><span style="font-size:10px; color:#94a3b8; display:block;">GRAND CLIENT REVENUE INVESTMENT</span></div>
                 <div style="font-size:18px; font-weight:800; color:#10b981; font-family:monospace;">An All-Inclusive Quote: ₹${(Number(price) + Number(airfare)).toLocaleString('en-IN')}/-</div>
             </div>
@@ -257,8 +365,24 @@ function addStandaloneHotelBlock() {
 }
 
 function removeStandaloneHotelBlock(id) { document.getElementById(`standalone-hotel-block-${id}`)?.remove(); reindexStandaloneHotels(); updateHotelVoucherLivePreview(); }
-function reindexStandaloneHotels() { Array.from(standaloneHotelsList?.children || []).forEach((b, i) => { const n = i + 1; b.id = `standalone-hotel-block-${n}`; b.querySelector('span').innerHTML = `<i data-lucide="building" class="h-3.5 w-3.5"></i> Hotel Slot ${n}`; b.querySelector('button').setAttribute('onclick', `removeStandaloneHotelBlock(${n})`); }); }
-function calculateStandaloneNights(id) { const b = document.getElementById(`standalone-hotel-block-${id}`); if (!b) return; const d1 = new Date(b.querySelector('.sh-in').value), d2 = new Date(b.querySelector('.sh-out').value); const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)); b.querySelector('.sh-nights').value = diff > 0 ? `${diff} Night${diff > 1 ? 's' : ''}` : `0 Nights`; updateHotelVoucherLivePreview(); }
+
+function reindexStandaloneHotels() { 
+    Array.from(standaloneHotelsList?.children || []).forEach((b, i) => { 
+        const n = i + 1; 
+        b.id = `standalone-hotel-block-${n}`; 
+        b.querySelector('span').innerHTML = `<i data-lucide="building" class="h-3.5 w-3.5"></i> Hotel Slot ${n}`; 
+        b.querySelector('button').setAttribute('onclick', `removeStandaloneHotelBlock(${n})`); 
+    }); 
+}
+
+function calculateStandaloneNights(id) { 
+    const b = document.getElementById(`standalone-hotel-block-${id}`); 
+    if (!b) return; 
+    const d1 = new Date(b.querySelector('.sh-in').value), d2 = new Date(b.querySelector('.sh-out').value); 
+    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)); 
+    b.querySelector('.sh-nights').value = diff > 0 ? `${diff} Night${diff > 1 ? 's' : ''}` : `0 Nights`; 
+    updateHotelVoucherLivePreview(); 
+}
 
 function compileHotelVoucherHTML() {
     let vcHtml = '', tot = 0;
@@ -266,7 +390,7 @@ function compileHotelVoucherHTML() {
         const pr = parseFloat(b.querySelector('.sh-price').value) || 0; tot += pr;
         let amHtml = (b.querySelector('.sh-amenities').value.trim() || "").split('\n').filter(l => l.trim()).map(l => `<div style="font-size:11px; color:#334155;">✔ ${l.trim()}</div>`).join('');
         vcHtml += `<div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; margin-bottom:16px; page-break-inside:avoid;">
-            <div style="display:flex; justify-content:between; border-bottom:1px dashed #cbd5e1; padding-bottom:10px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #cbd5e1; padding-bottom:10px; margin-bottom:12px;">
                 <div><span style="font-size:9px; font-weight:700; color:#10b981; background:#ecfdf5; padding:2px 8px; border-radius:999px;">VOUCHER 0${i+1}</span><h3 style="font-size:15px; font-weight:800; margin:4px 0 0 0;">${b.querySelector('.sh-name').value || "Premium Property"}</h3><p style="font-size:11px; color:#64748b; margin:2px 0 0 0;">Tier: ${b.querySelector('.sh-category').value}</p></div>
                 <div><span style="font-size:10px; color:#fff; background:#0f172a; padding:4px 8px; border-radius:6px;">CONFIRMED</span></div>
             </div>
@@ -281,9 +405,9 @@ function compileHotelVoucherHTML() {
         </div>`;
     });
     return `<div style="padding:20px; font-family:-apple-system, sans-serif; background:#fff; color:#1e293b;">
-        <div style="display:flex; justify-content:between; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:20px;"><h2>TRAVEL WORLD WIDE</h2></div>
+        <div style="display:flex; justify-content:space-between; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:20px;"><h2>TRAVEL WORLD WIDE</h2></div>
         ${vcHtml || '<p style="text-align:center; padding:20px; color:#94a3b8;">No vouchers created.</p>'}
-        ${tot > 0 ? `<div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:between; align-items:center;"><strong>TOTAL INVOICE PLATFORM QUOTE</strong><span style="font-size:18px; color:#10b981; font-weight:800;">₹${Math.round(tot).toLocaleString('en-IN')}/-</span></div>` : ''}
+        ${tot > 0 ? `<div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center;"><strong>TOTAL INVOICE PLATFORM QUOTE</strong><span style="font-size:18px; color:#10b981; font-weight:800;">₹${Math.round(tot).toLocaleString('en-IN')}/-</span></div>` : ''}
     </div>`;
 }
 
@@ -365,4 +489,48 @@ function addHotelStayBlock() {
     hotelsContainer.appendChild(b); b.querySelectorAll('input').forEach(e => e.addEventListener('input', updateLivePreview)); updateLivePreview();
 }
 
-async function saveItineraryToSupabase() { /* Full dynamic cloud sync wrapper mapping schema columns correctly */ }
+async function saveItineraryToSupabase() {
+    const saveBtn = document.getElementById('save-btn'); if (!saveBtn) return;
+    const originalText = saveBtn.innerText; saveBtn.innerText = "Saving to Cloud..."; saveBtn.style.opacity = "0.6";
+    const title = document.getElementById('pkg-title').value; const destination = document.getElementById('pkg-destination').value;
+    const startDate = document.getElementById('pkg-date').value || null; const numberOfPeople = parseInt(document.getElementById('pkg-pax').value) || 1;
+    const vehicleUsed = document.getElementById('pkg-vehicle').value; const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
+    const customerId = document.getElementById('pkg-customer-select').value || null; const airfarePrice = parseFloat(document.getElementById('pkg-airfare').value) || 0;
+    const dmcNetCost = parseFloat(document.getElementById('dmc-net-cost').value) || 0; const dmcMarkupPct = parseFloat(document.getElementById('dmc-markup-pct').value) || 0;
+    const inclusions = (document.getElementById('pkg-inclusions')?.value || "").split('\n').filter(item => item.trim());
+    const exclusions = (document.getElementById('pkg-exclusions')?.value || "").split('\n').filter(item => item.trim());
+
+    const hotelsPayload = Array.from(hotelsContainer?.children || []).map(block => ({
+        hotel_name: block.querySelector('.hotel-name').value || "TBD",
+        check_in: block.querySelector('.hotel-in').value || null,
+        check_out: block.querySelector('.hotel-out').value || null,
+        nights: parseInt(block.querySelector('.hotel-nights').value) || 0
+    }));
+
+    const flightsPayload = Array.from(flightsContainer?.children || []).map(block => ({
+        flight_number: block.querySelector('.fl-num').value || "TBD", route: block.querySelector('.fl-route').value || "---",
+        duration: block.querySelector('.fl-duration').value || "---", dep_date: block.querySelector('.fl-dep-date').value || null,
+        dep_time: block.querySelector('.fl-dep-time').value || "---", arr_date: block.querySelector('.fl-arr-date').value || null,
+        arr_time: block.querySelector('.fl-arr-time').value || "---", net_cost: parseFloat(block.querySelector('.fl-net')?.value) || 0, margin_pct: parseFloat(block.querySelector('.fl-margin')?.value) || 0
+    }));
+
+    if (!title || !destination) { alert("Please provide at least a Title and Destination."); saveBtn.innerText = originalText; saveBtn.style.opacity = "1"; return; }
+
+    try {
+        let res;
+        if (activeItineraryId) res = await supabaseClient.from('itineraries').update({ title, destination, start_date: startDate, number_of_people: numberOfPeople, vehicle_used: vehicleUsed, total_price: totalPrice, inclusions, exclusions, hotel_details: hotelsPayload, customer_id: customerId, flight_details: flightsPayload, airfare_price: airfarePrice, dmc_net_cost: dmcNetCost, dmc_markup_pct: dmcMarkupPct }).eq('id', activeItineraryId);
+        else res = await supabaseClient.from('itineraries').insert([{ title, destination, start_date: startDate, number_of_people: numberOfPeople, vehicle_used: vehicleUsed, total_price: totalPrice, inclusions, exclusions, hotel_details: hotelsPayload, customer_id: customerId, flight_details: flightsPayload, airfare_price: airfarePrice, dmc_net_cost: dmcNetCost, dmc_markup_pct: dmcMarkupPct }]);
+        if (res.error) throw res.error;
+        saveBtn.innerText = "✓ Synced to CRM"; saveBtn.style.backgroundColor = "#059669"; await fetchAndRenderItinerariesLedger();
+        setTimeout(() => { saveBtn.innerText = originalText; saveBtn.style.backgroundColor = ""; saveBtn.style.opacity = "1"; }, 2500);
+    } catch (err) { alert(`Cloud sync failed: ${err.message}`); saveBtn.innerText = originalText; saveBtn.style.opacity = "1"; }
+}
+window.deleteItineraryRecord = deleteItineraryRecord;
+window.removeFlightSectorBlock = removeFlightSectorBlock;
+window.removeHotelStayBlock = removeHotelStayBlock;
+window.removeItineraryDay = removeItineraryDay;
+window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
+window.addStandaloneHotelBlock = addStandaloneHotelBlock;
+window.removeStandaloneHotelBlock = removeStandaloneHotelBlock;
+window.calculateStandaloneNights = calculateStandaloneNights;
+window.updateHotelVoucherLivePreview = updateHotelVoucherLivePreview;
