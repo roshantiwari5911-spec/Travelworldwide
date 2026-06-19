@@ -8,12 +8,15 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 let dayCount = 0;
 let hotelCount = 0;
 let flightCount = 0;
+let standaloneHotelCount = 0; // Distinct counter parameter for standalones
 let activeItineraryId = null; 
 
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
-let tabItinerary, tabCustomers, moduleItinerary, moduleCustomers, pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
+let tabItinerary, tabCustomers, tabHotels, moduleItinerary, moduleCustomers, moduleHotels;
+let pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge;
 let ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
+let standaloneHotelsList, standaloneHotelSaveBtn, standaloneHotelExportBtn, hotelVoucherPreviewPane;
 
 const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 'pkg-inclusions', 'pkg-exclusions'];
 
@@ -30,8 +33,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     tabItinerary = document.getElementById('tab-itinerary');
     tabCustomers = document.getElementById('tab-customers');
+    tabHotels = document.getElementById('tab-hotels'); // Red box hook
+    
     moduleItinerary = document.getElementById('module-itinerary');
     moduleCustomers = document.getElementById('module-customers');
+    moduleHotels = document.getElementById('module-hotels'); // Voucher grid system block
+    
     pkgCustomerSelect = document.getElementById('pkg-customer-select');
     customerTableRows = document.getElementById('customer-table-rows');
     addCustSubmitBtn = document.getElementById('add-cust-submit-btn');
@@ -45,14 +52,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     openLedgerBtn = document.getElementById('open-ledger-btn');
     closeLedgerBtn = document.getElementById('close-ledger-btn');
 
+    // Standalone hotel form node declarations
+    standaloneHotelsList = document.getElementById('standalone-hotels-list');
+    standaloneHotelSaveBtn = document.getElementById('standalone-hotel-save-btn');
+    standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn');
+    hotelVoucherPreviewPane = document.getElementById('hotel-voucher-preview-pane');
+
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
+    tabHotels?.addEventListener('click', () => switchCrmModule('hotels'));
+    
     addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
     logoutBtn?.addEventListener('click', executeWorkspaceSignOut);
     clearWorkspaceBtn?.addEventListener('click', resetBuilderWorkspaceForm);
 
     openLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(true));
     closeLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(false));
+
+    document.getElementById('standalone-add-hotel-btn')?.addEventListener('click', addStandaloneHotelBlock);
+    standaloneHotelExportBtn?.addEventListener('click', generateStandaloneHotelPDF);
+    standaloneHotelSaveBtn?.addEventListener('click', saveStandaloneHotelsToSupabase);
 
     const submitBtn = document.getElementById('login-submit-btn');
     submitBtn?.addEventListener('click', handleWorkspaceLogin);
@@ -89,7 +108,7 @@ async function checkExistingAuthSession() {
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session auto-check intercept parsed successfully.");
+        console.warn("Session auto-check completed.");
     }
 }
 
@@ -105,21 +124,37 @@ async function executeWorkspaceSignOut() {
 }
 
 function switchCrmModule(activeModule) {
-    if(activeModule === 'itinerary') {
-        tabItinerary.className = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
-        tabCustomers.className = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
+    const unselectedTabClass = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
+    const selectedTabClass = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
+
+    tabItinerary.className = unselectedTabClass;
+    tabCustomers.className = unselectedTabClass;
+    tabHotels.className = unselectedTabClass + " border border-dashed border-indigo-500/30";
+    
+    moduleItinerary.classList.add('hidden');
+    moduleCustomers.classList.add('hidden');
+    moduleHotels.classList.add('hidden');
+
+    if (activeModule === 'itinerary') {
+        tabItinerary.className = selectedTabClass;
         moduleItinerary.classList.remove('hidden');
-        moduleCustomers.classList.add('hidden');
-        if(openLedgerBtn) openLedgerBtn.style.display = 'flex';
-    } else {
-        tabCustomers.className = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
-        tabItinerary.className = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
+        if (openLedgerBtn) openLedgerBtn.style.display = 'flex';
+    } else if (activeModule === 'customers') {
+        tabCustomers.className = selectedTabClass;
         moduleCustomers.classList.remove('hidden');
-        moduleItinerary.classList.add('hidden');
-        if(openLedgerBtn) openLedgerBtn.style.display = 'none';
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none';
         toggleLedgerDrawer(false); 
         fetchAndRenderCustomerBase(); 
+    } else if (activeModule === 'hotels') {
+        tabHotels.className = selectedTabClass + " border border-indigo-500/50";
+        moduleHotels.classList.remove('hidden');
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none';
+        toggleLedgerDrawer(false);
+        if (standaloneHotelsList && standaloneHotelsList.children.length === 0) {
+            addStandaloneHotelBlock();
+        }
     }
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function unlockPremiumWorkspace() {
@@ -201,13 +236,12 @@ async function fetchAndRenderItinerariesLedger() {
                         <div class="text-[9px] text-gray-600 font-mono text-right mt-1">Saved: ${dateStamp}</div>
                     </div>
                     <button onclick="deleteItineraryRecord('${itin.id}', '${itin.title.replace(/'/g, "\\'")}')" class="absolute top-3 right-3 p-1 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-80 sm:opacity-0 group-hover/card:opacity-100 transition duration-200" title="Delete Quote">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
                     </button>
                 </div>
             `;
         });
+        if (typeof lucide !== "undefined") lucide.createIcons();
     } catch (err) {
         console.error("Ledger rendering failure:", err);
     }
@@ -351,6 +385,307 @@ function updateLivePreview() {
     }
 }
 
+// =========================================================================
+// ====== NEW: STANDALONE HOTEL QUOTATION GENERATOR DESK FUNCTIONALITIES ======
+// =========================================================================
+
+function addStandaloneHotelBlock() {
+    standaloneHotelCount++;
+    const hotelBlock = document.createElement('div');
+    hotelBlock.className = 'bg-white/5 border border-white/5 p-4 sm:p-5 rounded-2xl space-y-4 relative transition-all duration-300 shadow-xl';
+    hotelBlock.id = `standalone-hotel-block-${standaloneHotelCount}`;
+    
+    hotelBlock.innerHTML = `
+        <div class="flex justify-between items-center pb-2 border-b border-white/5">
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                <i data-lucide="building" class="h-3.5 w-3.5"></i> Hotel Property Slot ${standaloneHotelCount}
+            </span>
+            <button type="button" onclick="removeStandaloneHotelBlock(${standaloneHotelCount})" class="text-xs text-red-400 hover:text-red-300 font-medium px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 transition flex items-center gap-1">
+                <i data-lucide="trash" class="h-3 w-3"></i> Delete
+            </button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div>
+                <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Hotel Structure Title</label>
+                <input type="text" placeholder="e.g., Centara Grand Mirage Beach Resort Pattaya" class="sh-name w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none" oninput="updateHotelVoucherLivePreview()">
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Check-In Date</label>
+                    <input type="date" class="sh-in w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none" onchange="calculateStandaloneNights(${standaloneHotelCount})">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Check-Out Date</label>
+                    <input type="date" class="sh-out w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none" onchange="calculateStandaloneNights(${standaloneHotelCount})">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Duration (Night/s)</label>
+                    <input type="text" readonly value="0 Nights" class="sh-nights w-full bg-indigo-950/20 border border-indigo-500/20 rounded-xl px-3 py-2 text-indigo-300 font-bold font-mono text-center focus:outline-none cursor-not-allowed">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Star Rating Classification</label>
+                    <select class="sh-category w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none" onchange="updateHotelVoucherLivePreview()">
+                        <option value="5 Star Luxury">5 Star Luxury Property</option>
+                        <option value="4 Star Premium">4 Star Premium Property</option>
+                        <option value="3 Star Standard" selected>3 Star Standard Property</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-emerald-400 uppercase tracking-wider mb-1 pl-0.5">Custom Quoted Amount (INR)</label>
+                    <input type="number" placeholder="e.g., 24500" class="sh-price w-full bg-white/5 border border-emerald-500/20 rounded-xl px-3 py-2.5 text-emerald-400 text-sm font-semibold font-mono focus:outline-none" oninput="updateHotelVoucherLivePreview()">
+                </div>
+            </div>
+        </div>
+    `;
+    if(standaloneHotelsList) standaloneHotelsList.appendChild(hotelBlock);
+    if (typeof lucide !== "undefined") lucide.createIcons();
+    updateHotelVoucherLivePreview();
+}
+
+function removeStandaloneHotelBlock(id) {
+    document.getElementById(`standalone-hotel-block-${id}`)?.remove();
+    reindexStandaloneHotels();
+    updateHotelVoucherLivePreview();
+}
+
+function reindexStandaloneHotels() {
+    const blocks = standaloneHotelsList ? standaloneHotelsList.children : [];
+    standaloneHotelCount = blocks.length;
+    Array.from(blocks).forEach((block, index) => {
+        const currentNum = index + 1;
+        block.id = `standalone-hotel-block-${currentNum}`;
+        block.querySelector('span').innerHTML = `<i data-lucide="building" class="h-3.5 w-3.5"></i> Hotel Property Slot ${currentNum}`;
+        const removeBtn = block.querySelector('button');
+        if(removeBtn) removeBtn.setAttribute('onclick', `removeStandaloneHotelBlock(${currentNum})`);
+    });
+    if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function calculateStandaloneNights(id) {
+    const block = document.getElementById(`standalone-hotel-block-${id}`);
+    if (!block) return;
+    
+    const checkInStr = block.querySelector('.sh-in').value;
+    const checkOutStr = block.querySelector('.sh-out').value;
+    const nightsInput = block.querySelector('.sh-nights');
+    
+    if (checkInStr && checkOutStr) {
+        const date1 = new Date(checkInStr);
+        const date2 = new Date(checkOutStr);
+        const timeDiff = date2.getTime() - date1.getTime();
+        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        
+        if (daysDiff > 0) {
+            nightsInput.value = `${daysDiff} Night${daysDiff > 1 ? 's' : ''}`;
+        } else {
+            nightsInput.value = `0 Nights`;
+        }
+    } else {
+        nightsInput.value = `0 Nights`;
+    }
+    updateHotelVoucherLivePreview();
+}
+
+// COMPILES VOUCHERS MATCHING AGODA/MAKEMYTRIP MINIMALIST HIGH-END METRICS LAYOUT
+function compileHotelVoucherHTML() {
+    const blocks = standaloneHotelsList ? standaloneHotelsList.children : [];
+    let vouchersContentHtml = '';
+    let totalGrossQuotationAggregate = 0;
+
+    Array.from(blocks).forEach((block, index) => {
+        const hName = block.querySelector('.sh-name').value || "Premium Property Selection";
+        const hIn = block.querySelector('.sh-in').value ? formatPremiumDate(block.querySelector('.sh-in').value) : '---';
+        const hOut = block.querySelector('.sh-out').value ? formatPremiumDate(block.querySelector('.sh-out').value) : '---';
+        const hNights = block.querySelector('.sh-nights').value || '0 Nights';
+        const hCategory = block.querySelector('.sh-category').value;
+        const hPrice = parseFloat(block.querySelector('.sh-price').value) || 0;
+
+        totalGrossQuotationAggregate += hPrice;
+
+        vouchersContentHtml += `
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 24px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.02); page-break-inside: avoid;">
+                <!-- Upper Header Block Segment -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #cbd5e1; padding-bottom: 16px; margin-bottom: 20px;">
+                    <div>
+                        <span style="font-size: 10px; font-weight: 700; color: #10b981; background: #ecfdf5; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; tracking: 0.5px; display: inline-block; margin-bottom: 8px;">Voucher Segment 0${index + 1}</span>
+                        <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3;">${hName}</h3>
+                        <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">Classification: <span style="color: #4f46e5;">${hCategory}</span></p>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 11px; font-weight: 700; color: #ffffff; background: #0f172a; px: 12px; padding: 6px 12px; border-radius: 8px; display: inline-block; text-transform: uppercase;">CONFIRMED</span>
+                    </div>
+                </div>
+
+                <!-- Agoda Style Dual Check Grid Panels -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #f1f5f9;">
+                    <div>
+                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-IN TIME</span>
+                        <strong style="font-size: 13px; color: #0f172a; display: block;">${hIn}</strong>
+                        <span style="font-size: 10px; color: #94a3b8;">From 14:00 hrs</span>
+                    </div>
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 16px;">
+                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-OUT TIME</span>
+                        <strong style="font-size: 13px; color: #0f172a; display: block;">${hOut}</strong>
+                        <span style="font-size: 10px; color: #94a3b8;">Until 12:00 hrs</span>
+                    </div>
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 16px; text-align: center; display: flex; flex-col; justify-content: center; flex-direction: column; align-items: center;">
+                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">STAY LENGTH</span>
+                        <strong style="font-size: 14px; color: #4f46e5; font-weight: 800;">${hNights}</strong>
+                    </div>
+                </div>
+
+                <!-- Inclusion Framework Details -->
+                <div style="font-size: 11.5px; color: #475569; line-height: 1.5; background: #fafafa; border: 1px dashed #e2e8f0; padding: 12px 16px; border-radius: 8px;">
+                    <div style="font-weight: 700; color: #334155; margin-bottom: 4px; font-size: 11px; text-transform: uppercase;">Voucher Booking Inclusions:</div>
+                    • Double Room Standard Inventory Accommodation Arrangement<br>
+                    • Daily Gourmet Managed Breakfast Buffet Spread inside the Main Resto Lounge<br>
+                    • Full Access Privileges to On-Site Leisure Facilities & Pool Decks
+                </div>
+
+                <!-- Row Pricing Grid Allocation -->
+                <div style="margin-top: 16px; text-align: right; font-size: 12px; color: #475569;">
+                    Room Segment Value: <strong style="color: #0f172a; font-size: 14px; font-family: monospace;">₹${Math.round(hPrice).toLocaleString('en-IN')}/-</strong>
+                </div>
+            </div>
+        `;
+    });
+
+    return `
+        <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
+            <!-- Document Header Component -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 25px;">
+                <div>
+                    <h2 style="font-size: 22px; font-weight: 900; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; tracking: 1.5px; font-weight: 600;">Luxury Hotel Confirmation Voucher</p>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.4;">
+                    <p style="margin:0; font-weight: 700; color: #0f172a;">salestravelworldwide@gmail.com</p>
+                    <p style="margin:0; font-weight: 500;">Desk Line: +91 88926 89595</p>
+                </div>
+            </div>
+
+            <!-- Inject Row List Content -->
+            ${vouchersContentHtml || '<p style="color:#94a3b8; font-style:italic; font-size:12px; text-align:center; padding:40px 0;">No active properties allocated inside the voucher workspace desk ledger yet.</p>'}
+
+            <!-- Centralized Master Financial Subtotal Receipt Block -->
+            ${blocks.length > 0 ? `
+            <div style="margin-top: 30px; background: #0f172a; color: #ffffff; border-radius: 14px; padding: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(0,0,0,0.05); page-break-inside: avoid;">
+                <div>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 1px; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 2px;">TOTAL CONSOLIDATED ACCOMMODATION INVESTMENT</span>
+                    <span style="font-size: 11px; color: #cbd5e1;">All-inclusive of corporate agency coordination levies & resort taxes</span>
+                </div>
+                <div style="font-size: 22px; font-weight: 800; color: #10b981; font-family: monospace;">
+                    ₹${Math.round(totalGrossQuotationAggregate).toLocaleString('en-IN')}/-
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- Footer Term Guidelines Summary Block -->
+            <div style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 10px; color: #94a3b8; line-height: 1.5; page-break-inside: avoid;">
+                <strong>Important Voucher Guidelines:</strong> This document represents an official boutique booking summary quote curated by Travel World Wide. Room confirmations remain subject to live hotel block inventory availability indices upon direct payment routing sequences. Individual passport identification maps must be provided during properties check-in protocols.
+            </div>
+        </div>
+    `;
+}
+
+function updateHotelVoucherLivePreview() {
+    if (hotelVoucherPreviewPane) {
+        hotelVoucherPreviewPane.innerHTML = compileHotelVoucherHTML();
+    }
+}
+
+function generateStandaloneHotelPDF() {
+    const title = "Hotel_Voucher_Quotation";
+    const htmlContent = compileHotelVoucherHTML();
+    const printWindow = window.open('', '_blank', 'width=950,height=850');
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${title}_Proposal</title>
+            <style>
+                body { margin: 0; background: #ffffff; }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            </style>
+        </head>
+        <body>
+            ${htmlContent}
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+async function saveStandaloneHotelsToSupabase() {
+    const blocks = standaloneHotelsList ? standaloneHotelsList.children : [];
+    if (blocks.length === 0) {
+        alert("Please map at least one hotel property slot to trigger saving loops.");
+        return;
+    }
+
+    standaloneHotelSaveBtn.innerText = "Syncing Cloud Grid...";
+    standaloneHotelSaveBtn.disabled = true;
+
+    const firstHotelTitle = blocks[0].querySelector('.sh-name').value || "Standalone Voucher Group";
+    let totalAggregateValue = 0;
+
+    const payloadHotels = Array.from(blocks).map(block => {
+        const val = parseFloat(block.querySelector('.sh-price').value) || 0;
+        totalAggregateValue += val;
+        return {
+            hotel_name: block.querySelector('.sh-name').value || "TBD",
+            check_in: block.querySelector('.sh-in').value || null,
+            check_out: block.querySelector('.sh-out').value || null,
+            nights: parseInt(block.querySelector('.sh-nights').value) || 0,
+            category: block.querySelector('.sh-category').value,
+            price: val
+        };
+    });
+
+    // Pushes standalone items seamlessly as a standardized row format packet to your itineraries schema bucket
+    const payload = {
+        title: "[HOTEL VOUCHER] " + firstHotelTitle,
+        destination: "Standalone Hotel Request",
+        total_price: totalAggregateValue,
+        hotel_details: payloadHotels,
+        inclusions: ["Consolidated Room Bookings Summary Only"],
+        exclusions: ["Flights or ground itinerary services excluded outside specific vouchers listings"]
+    };
+
+    try {
+        const dbResult = await supabaseClient.from('itineraries').insert([payload]);
+        if (dbResult.error) throw dbResult.error;
+
+        standaloneHotelSaveBtn.innerText = "✓ Voucher Synced";
+        standaloneHotelSaveBtn.style.backgroundColor = "#059669";
+        setTimeout(() => {
+            standaloneHotelSaveBtn.innerText = "Sync Vouchers";
+            standaloneHotelSaveBtn.style.backgroundColor = "";
+            standaloneHotelSaveBtn.disabled = false;
+        }, 2500);
+    } catch (err) {
+        alert(`Cloud sync fault triggered: ${err.message}`);
+        standaloneHotelSaveBtn.innerText = "Sync Vouchers";
+        standaloneHotelSaveBtn.disabled = false;
+    }
+}
+
+// =========================================================================
+// ====== PRE-EXISTING CRM METHODS AND MODULE CORES ======
+// =========================================================================
+
 async function handleWorkspaceLogin(e) {
     if (e) e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -466,7 +801,6 @@ function addFlightSectorBlock() {
             <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Flight Sector Route ${flightCount}</span>
             <button type="button" onclick="removeFlightSectorBlock(${flightCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
         </div>
-        
         <div class="grid grid-cols-2 gap-2 bg-cyan-950/20 p-2 rounded-lg border border-cyan-500/10">
             <div>
                 <label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Net Airfare Buying Cost (INR)</label>
@@ -477,7 +811,6 @@ function addFlightSectorBlock() {
                 <input type="number" value="0" class="fl-margin w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()">
             </div>
         </div>
-
         <div class="space-y-3 text-xs">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
@@ -493,7 +826,6 @@ function addFlightSectorBlock() {
                     <input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
             </div>
-            
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span>
@@ -506,14 +838,12 @@ function addFlightSectorBlock() {
                     <input type="text" placeholder="Time" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
                 </div>
             </div>
-
             <div class="pt-2 border-t border-white/5">
                 <label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer">
                     <input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">
                     Include Connection / 2nd Leg
                 </label>
             </div>
-
             <div id="flight-leg2-container-${flightCount}" class="hidden pt-3 border-t border-white/10 space-y-3 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/10">
                 <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Connecting Leg 2 Specifications</span>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -554,26 +884,6 @@ function removeFlightSectorBlock(id) {
     updateLivePreview();
 }
 
-window.deleteItineraryRecord = deleteItineraryRecord;
-window.toggleFlightLeg2 = toggleFlightLeg2;
-window.removeFlightSectorBlock = removeFlightSectorBlock;
-window.removeHotelStayBlock = removeHotelStayBlock;
-window.removeItineraryDay = removeItineraryDay;
-window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
-
-function toggleFlightLeg2(id) {
-    const block = document.getElementById(`flight-block-${id}`);
-    const leg2Container = document.getElementById(`flight-leg2-container-${id}`);
-    const checkbox = block?.querySelector('.fl-has-leg2');
-    
-    if (checkbox && checkbox.checked) {
-        leg2Container?.classList.remove('hidden');
-    } else {
-        leg2Container?.classList.add('hidden');
-    }
-    updateLivePreview();
-}
-
 function addHotelStayBlock() {
     hotelCount++;
     const hotelBlock = document.createElement('div');
@@ -585,7 +895,6 @@ function addHotelStayBlock() {
             <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Property Location Slot ${hotelCount}</span>
             <button type="button" onclick="removeHotelStayBlock(${hotelCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
         </div>
-
         <div class="space-y-3">
             <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
             <div class="grid grid-cols-3 gap-1.5">
@@ -785,16 +1094,13 @@ function compileItineraryHTML() {
                 <div><strong style="color: #475569;">Total Travelers:</strong> <span style="color: #0f172a; font-weight: 500;">${pax} Adults</span></div>
                 <div style="grid-column: span 2;"><strong style="color: #475569;">Private Ground Transport:</strong> <span style="color: #0f172a; font-weight: 500;">${vehicle}</span></div>
             </div>
-
             ${flightBlocks.length > 0 ? `
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #0891b2; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 14px;">Flight Routing & Logistics</h3>
                 ${flightsHtml}
             </div>
             ` : ''}
-
             ${airfareBlockHtml}
-
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;">Premium Stays & Accommodations</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -931,7 +1237,6 @@ async function saveItineraryToSupabase() {
         } else {
             dbResult = await supabaseClient.from('itineraries').insert([payload]);
         }
-
         if (dbResult.error) throw dbResult.error;
 
         saveBtn.innerText = "✓ Synced to CRM";
@@ -949,3 +1254,14 @@ async function saveItineraryToSupabase() {
         saveBtn.style.opacity = "1";
     }
 }
+
+window.deleteItineraryRecord = deleteItineraryRecord;
+window.toggleFlightLeg2 = toggleFlightLeg2;
+window.removeFlightSectorBlock = removeFlightSectorBlock;
+window.removeHotelStayBlock = removeHotelStayBlock;
+window.removeItineraryDay = removeItineraryDay;
+window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
+window.addStandaloneHotelBlock = addStandaloneHotelBlock;
+window.removeStandaloneHotelBlock = removeStandaloneHotelBlock;
+window.calculateStandaloneNights = calculateStandaloneNights;
+window.updateHotelVoucherLivePreview = updateHotelVoucherLivePreview;
