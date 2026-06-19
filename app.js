@@ -18,7 +18,12 @@ let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge;
 let ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
 let standaloneHotelsList, standaloneHotelSaveBtn, standaloneHotelExportBtn, hotelVoucherPreviewPane;
 
-const inputs = ['pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle'];
+// All foundational input trackers mapped explicitly
+const coreInputIds = [
+    'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
+    'pkg-inclusions', 'pkg-exclusions', 'dmc-net-cost', 'dmc-markup-pct', 
+    'pkg-price', 'pkg-airfare'
+];
 
 document.addEventListener('DOMContentLoaded', async () => {
     addDayBtn = document.getElementById('add-day-btn');
@@ -75,7 +80,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const submitBtn = document.getElementById('login-submit-btn');
     submitBtn?.addEventListener('click', handleWorkspaceLogin);
 
-    inputs.forEach(id => {
+    // Attach dynamic input listeners to core inputs safely
+    coreInputIds.forEach(id => {
         document.getElementById(id)?.addEventListener('input', updateLivePreview);
     });
 
@@ -107,7 +113,7 @@ async function checkExistingAuthSession() {
             unlockPremiumWorkspace();
         }
     } catch (err) {
-        console.warn("Session auto-check compiled safely.");
+        console.warn("Session trace synchronized.");
     }
 }
 
@@ -176,13 +182,15 @@ function resetBuilderWorkspaceForm() {
     activeItineraryId = null;
     if (activeRecordBadge) activeRecordBadge.classList.add('hidden');
     
-    inputs.forEach(id => {
+    coreInputIds.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
             if (id === 'pkg-inclusions') {
                 element.value = "Premium accommodations as detailed above\nAll airport transfers and local sightseeing via private AC vehicle\nDaily gourmet breakfast at the hotel properties";
             } else if (id === 'pkg-exclusions') {
                 element.value = "International or domestic flight tickets\nPersonal laundry, tips, and items outside mentioned meals\nTravel insurance or emergency documentation support";
+            } else if (id === 'dmc-markup-pct') {
+                element.value = '0';
             } else {
                 element.value = '';
             }
@@ -194,9 +202,6 @@ function resetBuilderWorkspaceForm() {
     if (hotelsContainer) hotelsContainer.innerHTML = '';
     if (daysContainer) daysContainer.innerHTML = '';
     
-    if (document.getElementById('dmc-net-cost')) document.getElementById('dmc-net-cost').value = '';
-    if (document.getElementById('dmc-markup-pct')) document.getElementById('dmc-markup-pct').value = '0';
-
     dayCount = 0;
     hotelCount = 0;
     flightCount = 0;
@@ -375,9 +380,13 @@ function calculateMarginMetrics() {
     if (priceField) priceField.value = Math.round(grossLandPackageTotal);
     if (airfareField) airfareField.value = Math.round(grossAirfareTotal);
 
-    document.getElementById('meta-net-cost').innerText = `₹${Math.round(totalAgencyNetCost).toLocaleString('en-IN')}`;
-    document.getElementById('meta-profit-cost').innerText = `₹${Math.round(netAgencyProfitTake).toLocaleString('en-IN')}`;
-    document.getElementById('meta-gross-cost').innerText = `₹${Math.round(combinedClientGrossQuote).toLocaleString('en-IN')}`;
+    const netLabel = document.getElementById('meta-net-cost');
+    const profitLabel = document.getElementById('meta-profit-cost');
+    const grossLabel = document.getElementById('meta-gross-cost');
+
+    if (netLabel) netLabel.innerText = `₹${Math.round(totalAgencyNetCost).toLocaleString('en-IN')}`;
+    if (profitLabel) profitLabel.innerText = `₹${Math.round(netAgencyProfitTake).toLocaleString('en-IN')}`;
+    if (grossLabel) grossLabel.innerText = `₹${Math.round(combinedClientGrossQuote).toLocaleString('en-IN')}`;
 }
 
 function updateLivePreview() {
@@ -387,27 +396,27 @@ function updateLivePreview() {
     }
 }
 
-// ====== HIGH-END HEADOUT/AGODA-LEVEL PROPOSAL TEMPLATE RE-ENGINEERING ======
+// ====== HIGH-END HEADOUT/AGODA-LEVEL PROPOSAL TEMPLATE ENGINE ======
 function compileItineraryHTML() {
-    const title = document.getElementById('pkg-title').value || "Boutique Experience Proposal";
-    const dest = document.getElementById('pkg-destination').value || "---";
-    const date = document.getElementById('pkg-date').value || "---";
-    const pax = document.getElementById('pkg-pax').value || "0";
-    const vehicle = document.getElementById('pkg-vehicle').value || "---";
-    const price = document.getElementById('pkg-price').value || "0";
-    const airfare = document.getElementById('pkg-airfare').value || "0";
+    const title = document.getElementById('pkg-title')?.value || "Boutique Experience Proposal";
+    const dest = document.getElementById('pkg-destination')?.value || "---";
+    const date = document.getElementById('pkg-date')?.value || "---";
+    const pax = document.getElementById('pkg-pax')?.value || "0";
+    const vehicle = document.getElementById('pkg-vehicle')?.value || "---";
+    const price = document.getElementById('pkg-price')?.value || "0";
+    const airfare = document.getElementById('pkg-airfare')?.value || "0";
 
     let flightsHtml = '';
     const flightBlocks = flightsContainer ? flightsContainer.children : [];
     Array.from(flightBlocks).forEach((block) => {
-        const fNum = block.querySelector('.fl-num').value || "TBD";
-        const fRoute = block.querySelector('.fl-route').value || "---";
-        const fDur = block.querySelector('.fl-duration').value || "---";
-        const fDepD = formatPremiumDate(block.querySelector('.fl-dep-date').value);
-        const fDepT = block.querySelector('.fl-dep-time').value || "---";
-        const fArrD = formatPremiumDate(block.querySelector('.fl-arr-date').value);
-        const fArrT = block.querySelector('.fl-arr-time').value || "---";
-        const hasLeg2 = block.querySelector('.fl-has-leg2').checked;
+        const fNum = block.querySelector('.fl-num')?.value || "TBD";
+        const fRoute = block.querySelector('.fl-route')?.value || "---";
+        const fDur = block.querySelector('.fl-duration')?.value || "---";
+        const fDepD = formatPremiumDate(block.querySelector('.fl-dep-date')?.value);
+        const fDepT = block.querySelector('.fl-dep-time')?.value || "---";
+        const fArrD = formatPremiumDate(block.querySelector('.fl-arr-date')?.value);
+        const fArrT = block.querySelector('.fl-arr-time')?.value || "---";
+        const hasLeg2 = block.querySelector('.fl-has-leg2')?.checked;
 
         flightsHtml += `
             <div style="border-left: 2.5px solid #000000; padding-left: 14px; margin-bottom: 16px; font-size: 11.5px; font-family: -apple-system, sans-serif;">
@@ -421,13 +430,13 @@ function compileItineraryHTML() {
         `;
 
         if (hasLeg2) {
-            const fNum2 = block.querySelector('.fl-num2').value || "TBD";
-            const fRoute2 = block.querySelector('.fl-route2').value || "---";
-            const fDur2 = block.querySelector('.fl-duration2').value || "---";
-            const fDepD2 = formatPremiumDate(block.querySelector('.fl-dep-date2').value);
-            const fDepT2 = block.querySelector('.fl-dep-time2').value || "---";
-            const fArrD2 = formatPremiumDate(block.querySelector('.fl-arr-date2').value);
-            const fArrT2 = block.querySelector('.fl-arr-time2').value || "---";
+            const fNum2 = block.querySelector('.fl-num2')?.value || "TBD";
+            const fRoute2 = block.querySelector('.fl-route2')?.value || "---";
+            const fDur2 = block.querySelector('.fl-duration2')?.value || "---";
+            const fDepD2 = formatPremiumDate(block.querySelector('.fl-dep-date2')?.value);
+            const fDepT2 = block.querySelector('.fl-dep-time2')?.value || "---";
+            const fArrD2 = formatPremiumDate(block.querySelector('.fl-arr-date2')?.value);
+            const fArrT2 = block.querySelector('.fl-arr-time2')?.value || "---";
 
             flightsHtml += `
                 <div style="border-left: 2.5px dashed #9ca3af; padding-left: 14px; margin-left: 15px; margin-bottom: 16px; font-size: 11px; background: #fafafa; padding-top: 6px; padding-bottom: 6px; border-radius:0 6px 6px 0;">
@@ -445,10 +454,10 @@ function compileItineraryHTML() {
     let hotelsHtml = '';
     const hotelBlocks = hotelsContainer ? hotelsContainer.children : [];
     Array.from(hotelBlocks).forEach((block) => {
-        const hName = block.querySelector('.hotel-name').value || "Accommodation Properties Pending";
-        const hIn = formatPremiumDate(block.querySelector('.hotel-in').value);
-        const hOut = formatPremiumDate(block.querySelector('.hotel-out').value);
-        const hNights = block.querySelector('.hotel-nights').value || "0";
+        const hName = block.querySelector('.hotel-name')?.value || "Accommodation Properties Pending";
+        const hIn = formatPremiumDate(block.querySelector('.hotel-in')?.value);
+        const hOut = formatPremiumDate(block.querySelector('.hotel-out')?.value);
+        const hNights = block.querySelector('.hotel-nights')?.value || "0";
 
         hotelsHtml += `
             <tr style="border-bottom: 1px solid #e5e7eb; font-size: 11.5px; color: #374151;">
@@ -471,8 +480,8 @@ function compileItineraryHTML() {
     let daysHtml = '';
     const dayBlocks = daysContainer ? daysContainer.children : [];
     Array.from(dayBlocks).forEach((block, index) => {
-        const dTitle = block.querySelector('.day-title-input').value || `Day ${index + 1} Itinerary Loop`;
-        const dDesc = block.querySelector('.day-desc-input').value || 'Logistics details to follow.';
+        const dTitle = block.querySelector('.day-title-input')?.value || `Day ${index + 1} Itinerary Loop`;
+        const dDesc = block.querySelector('.day-desc-input')?.value || 'Logistics details to follow.';
         daysHtml += `
             <div style="margin-bottom: 22px; page-break-inside: avoid; background:#fefefe; padding:16px; border-radius:12px; border:1px solid #f3f4f6;">
                 <h4 style="font-size: 13px; font-weight: 800; color: #111827; margin: 0 0 6px 0; text-transform:uppercase; letter-spacing:0.3px;">DAY 0${index + 1} &bull; ${dTitle}</h4>
@@ -514,10 +523,9 @@ function compileItineraryHTML() {
 
     return `
         <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; background: #ffffff;">
-            <!-- Premium Headout-Style Brand Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111827; padding-bottom: 18px; margin-bottom: 25px;">
                 <div>
-                    <h2 style="font-size: 23px; font-weight: 900; tracking: -0.5px; color: #111827; margin: 0; font-family: -apple-system, sans-serif;">TRAVEL WORLD WIDE</h2>
+                    <h2 style="font-size: 23px; font-weight: 900; tracking: -0.5px; color: #111827; margin: 0;">TRAVEL WORLD WIDE</h2>
                     <p style="font-size: 10px; color: #4b5563; margin: 3px 0 0 0; text-transform: uppercase; tracking: 1.5px; font-weight: 700;">Curated Experience Portfolio</p>
                 </div>
                 <div style="text-align: right; font-size: 11px; color: #4b5563; line-height: 1.4;">
@@ -526,16 +534,14 @@ function compileItineraryHTML() {
                 </div>
             </div>
 
-            <!-- Crisp Clean Information Grid -->
             <div style="background: #f9fafb; border-radius: 14px; padding: 18px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; font-size: 12px; border: 1px solid #e5e7eb;">
                 <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Experience Package</strong> <span style="color: #111827; font-weight: 700; font-size:12.5px;">${title}</span></div>
                 <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Target Destination</strong> <span style="color: #111827; font-weight: 700; font-size:12.5px;">📍 ${dest}</span></div>
                 <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Departure Date</strong> <span style="color: #111827; font-weight: 600;">${formatPremiumDate(date)}</span></div>
                 <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Accompanying Roster</strong> <span style="color: #111827; font-weight: 600;">👥 ${pax} Guests Allotted</span></div>
-                <div style="grid-column: span 2; border-top:1px dashed #e5e7eb; pt:10px; margin-top:4px;"><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Ground Logistics Fleet</strong> <span style="color: #111827; font-weight: 600;">🚘 ${vehicle}</span></div>
+                <div style="grid-column: span 2; border-top:1px dashed #e5e7eb; padding-top:10px; margin-top:4px;"><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Ground Logistics Fleet</strong> <span style="color: #111827; font-weight: 600;">🚘 ${vehicle}</span></div>
             </div>
 
-            <!-- Flights Block Layout -->
             ${flightBlocks.length > 0 ? `
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 11px; font-weight: 800; color: #111827; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid #111827; padding-bottom: 5px; margin-bottom: 14px;">I. Flight Routing & Aviation Matrices</h3>
@@ -543,7 +549,6 @@ function compileItineraryHTML() {
             </div>
             ` : ''}
 
-            <!-- Accommodations Table Grid Layout -->
             <div style="margin-bottom: 25px; page-break-inside: avoid;">
                 <h3 style="font-size: 11px; font-weight: 800; color: #111827; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid #111827; padding-bottom: 5px; margin-bottom: 14px;">II. Premium Resort Stays & Living Breakdowns</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left;">
@@ -561,13 +566,11 @@ function compileItineraryHTML() {
                 </table>
             </div>
 
-            <!-- Itinerary Days Block Layout -->
             <div style="margin-bottom: 25px;">
                 <h3 style="font-size: 11px; font-weight: 800; color: #111827; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid #111827; padding-bottom: 5px; margin-bottom: 14px;">III. Curated Experience Day-Wise Timeline Loops</h3>
                 ${daysHtml || '<p style="color:#9ca3af; font-style:italic; font-size:11px; text-align:center; padding:10px 0;">No timeline slots mapped yet.</p>'}
             </div>
 
-            <!-- Inclusions/Exclusions Grid Layout -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid #e5e7eb; padding-top: 18px; margin-bottom: 10px; page-break-inside: avoid;">
                 <div>
                     <h4 style="font-size: 11px; font-weight: 800; color: #10b981; text-transform: uppercase; tracking:0.5px; margin: 0 0 10px 0;">✓ Verified Package Inclusions</h4>
@@ -583,14 +586,13 @@ function compileItineraryHTML() {
                 </div>
             </div>
 
-            <!-- Consolidated Totals Layout Blocks -->
             ${financialsBlockHtml}
         </div>
     `;
 }
 
 function generateProfessionalPDF() {
-    const title = document.getElementById('pkg-title').value || "Travel_WW_Quotation";
+    const title = document.getElementById('pkg-title')?.value || "Travel_WW_Quotation";
     const element = previewPane;
     const opt = {
         margin: [10, 10, 14, 10],
@@ -603,7 +605,7 @@ function generateProfessionalPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-// ====== NEW: STANDALONE HOTEL QUOTATION GENERATOR DESK FUNCTIONALITIES ======
+// ====== STANDALONE HOTEL QUOTATION GENERATOR DESK FUNCTIONALITIES ======
 function addStandaloneHotelBlock() {
     standaloneHotelCount++;
     const hotelBlock = document.createElement('div');
@@ -1036,26 +1038,178 @@ async function onboardNewCustomerRecord() {
     }
 }
 
-function toggleFlightLeg2(id) {
-    const block = document.getElementById(`flight-block-${id}`);
-    const leg2Container = document.getElementById(`flight-leg2-container-${id}`);
-    const checkbox = block?.querySelector('.fl-has-leg2');
+function addFlightSectorBlock() {
+    flightCount++;
+    const flightBlock = document.createElement('div');
+    flightBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    flightBlock.id = `flight-block-${flightCount}`;
     
-    if (checkbox && checkbox.checked) {
-        leg2Container?.classList.remove('hidden');
-    } else {
-        leg2Container?.classList.add('hidden');
-    }
+    flightBlock.innerHTML = `
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Flight Sector Route ${flightCount}</span>
+            <button type="button" onclick="removeFlightSectorBlock(${flightCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 bg-cyan-950/20 p-2 rounded-lg border border-cyan-500/10">
+            <div>
+                <label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Net Airfare Buying Cost (INR)</label>
+                <input type="number" placeholder="e.g., 12000" class="fl-net w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()">
+            </div>
+            <div>
+                <label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Airfare Markup (%)</label>
+                <input type="number" value="0" class="fl-margin w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()">
+            </div>
+        </div>
+        <div class="space-y-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Flight Number</label>
+                    <input type="text" placeholder="e.g., TG-318" class="fl-num w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Route String</label>
+                    <input type="text" placeholder="e.g., MAA - BKK" class="fl-route w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Duration</label>
+                    <input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span>
+                    <input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Arrival</span>
+                    <input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    <input type="text" placeholder="Time" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                </div>
+            </div>
+            <div class="pt-2 border-t border-white/5">
+                <label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer">
+                    <input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">
+                    Include Connection / 2nd Leg
+                </label>
+            </div>
+            <div id="flight-leg2-container-${flightCount}" class="hidden pt-3 border-t border-white/10 space-y-3 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/10">
+                <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Connecting Leg 2 Specifications</span>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Flight Number (Leg 2)</label>
+                        <input type="text" placeholder="e.g., TG-123" class="fl-num2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Route (Leg 2)</label>
+                        <input type="text" placeholder="e.g., BKK - HKT" class="fl-route2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Duration (Leg 2)</label>
+                        <input type="text" placeholder="e.g., 1h 20m" class="fl-duration2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="block text-[9px] text-gray-400 uppercase">Departure (Leg 2)</label>
+                        <input type="date" class="fl-dep-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="Time" class="fl-dep-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-[9px] text-gray-400 uppercase">Arrival (Leg 2)</label>
+                        <input type="date" class="fl-arr-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                        <input type="text" placeholder="Time" class="fl-arr-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    if(flightsContainer) flightsContainer.appendChild(flightBlock);
+    // Attach event listeners dynamically to newly injected flight block inputs for live synchronization updates
+    flightBlock.querySelectorAll('input').forEach(elem => elem.addEventListener('input', updateLivePreview));
     updateLivePreview();
 }
 
-window.deleteItineraryRecord = deleteItineraryRecord;
-window.toggleFlightLeg2 = toggleFlightLeg2;
-window.removeFlightSectorBlock = removeFlightSectorBlock;
-window.removeHotelStayBlock = removeHotelStayBlock;
-window.removeItineraryDay = removeItineraryDay;
-window.loadSavedItineraryIntoWorkspace = loadSavedItineraryIntoWorkspace;
-window.addStandaloneHotelBlock = addStandaloneHotelBlock;
-window.removeStandaloneHotelBlock = removeStandaloneHotelBlock;
-window.calculateStandaloneNights = calculateStandaloneNights;
-window.updateHotelVoucherLivePreview = updateHotelVoucherLivePreview;
+function removeFlightSectorBlock(id) {
+    document.getElementById(`flight-block-${id}`)?.remove();
+    updateLivePreview();
+}
+
+function addHotelStayBlock() {
+    hotelCount++;
+    const hotelBlock = document.createElement('div');
+    hotelBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    hotelBlock.id = `hotel-block-${hotelCount}`;
+    
+    hotelBlock.innerHTML = `
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Property Location Slot ${hotelCount}</span>
+            <button type="button" onclick="removeHotelStayBlock(${hotelCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
+        </div>
+        <div class="space-y-3">
+            <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
+            <div class="grid grid-cols-3 gap-1.5">
+                <div>
+                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Check-In</label>
+                    <input type="date" class="hotel-in w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Check-Out</label>
+                    <input type="date" class="hotel-out w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
+                </div>
+                <div>
+                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Nights</label>
+                    <input type="number" placeholder="2" class="hotel-nights w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
+                </div>
+            </div>
+        </div>
+    `;
+    if(hotelsContainer) hotelsContainer.appendChild(hotelBlock);
+    hotelBlock.querySelectorAll('input').forEach(elem => elem.addEventListener('input', updateLivePreview));
+    updateLivePreview();
+}
+
+function removeHotelStayBlock(id) {
+    document.getElementById(`hotel-block-${id}`)?.remove();
+    updateLivePreview();
+}
+
+function addItineraryDay() {
+    dayCount++;
+    const dayBlock = document.createElement('div');
+    dayBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
+    dayBlock.id = `day-block-${dayCount}`;
+    
+    dayBlock.innerHTML = `
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Day ${dayCount}</span>
+            <button type="button" onclick="removeItineraryDay(${dayCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
+        </div>
+        <input type="text" placeholder="Day Title: e.g., Arrival & Beachside Sunset Dinner" class="day-title-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
+        <textarea placeholder="Excursion or tour details below this day..." rows="3" class="day-desc-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white resize-none" oninput="updateLivePreview()"></textarea>
+    `;
+    if(daysContainer) daysContainer.appendChild(dayBlock);
+    dayBlock.querySelector('input').addEventListener('input', updateLivePreview);
+    dayBlock.querySelector('textarea').addEventListener('input', updateLivePreview);
+    updateLivePreview();
+}
+
+function removeItineraryDay(id) {
+    const element = document.getElementById('day-block-' + id);
+    if (element) {
+        element.remove();
+        reindexDays();
+        updateLivePreview();
+    }
+}
+
+function reindexDays() {
+    const blocks = daysContainer ? daysContainer.children : [];
+    dayCount = blocks.length;
+    Array.from(blocks).forEach((block, index) => {
+        const currentNum = index + 1;
+        block.id = `day-block-${currentNum}`;
+        block.querySelector('span').innerText = `Day ${currentNum}`;
+        const removeBtn = block.querySelector('button');
+        if(removeBtn) removeBtn.setAttribute('onclick', `removeItineraryDay(${currentNum})`);
+    });
+}
