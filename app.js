@@ -18,339 +18,20 @@ let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge;
 let ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
 let standaloneHotelsList, standaloneHotelSaveBtn, standaloneHotelExportBtn, hotelVoucherPreviewPane;
 
-// All foundational input trackers mapped explicitly
 const coreInputIds = [
     'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
     'pkg-inclusions', 'pkg-exclusions', 'dmc-net-cost', 'dmc-markup-pct', 
     'pkg-price', 'pkg-airfare'
 ];
 
-document.addEventListener('DOMContentLoaded', async () => {
-    addDayBtn = document.getElementById('add-day-btn');
-    addHotelBtn = document.getElementById('add-hotel-btn');
-    addFlightBtn = document.getElementById('add-flight-btn');
-    daysContainer = document.getElementById('days-container');
-    hotelsContainer = document.getElementById('hotels-container');
-    flightsContainer = document.getElementById('flights-container');
-    previewPane = document.getElementById('pdf-preview-pane');
-    loginGate = document.getElementById('login-gate');
-    crmWorkspace = document.getElementById('crm-workspace');
-    
-    tabItinerary = document.getElementById('tab-itinerary');
-    tabCustomers = document.getElementById('tab-customers');
-    tabHotels = document.getElementById('tab-hotels'); 
-    
-    moduleItinerary = document.getElementById('module-itinerary');
-    moduleCustomers = document.getElementById('module-customers');
-    moduleHotels = document.getElementById('module-hotels'); 
-    
-    pkgCustomerSelect = document.getElementById('pkg-customer-select');
-    customerTableRows = document.getElementById('customer-table-rows');
-    addCustSubmitBtn = document.getElementById('add-cust-submit-btn');
-    logoutBtn = document.getElementById('logout-btn');
-    
-    savedItinerariesLedger = document.getElementById('saved-itineraries-ledger');
-    clearWorkspaceBtn = document.getElementById('clear-workspace-btn');
-    activeRecordBadge = document.getElementById('active-record-badge');
-    
-    ledgerDrawer = document.getElementById('ledger-drawer');
-    openLedgerBtn = document.getElementById('open-ledger-btn');
-    closeLedgerBtn = document.getElementById('close-ledger-btn');
-
-    standaloneHotelsList = document.getElementById('standalone-hotels-list');
-    standaloneHotelSaveBtn = document.getElementById('standalone-hotel-save-btn');
-    standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn');
-    hotelVoucherPreviewPane = document.getElementById('hotel-voucher-preview-pane');
-
-    tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
-    tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
-    tabHotels?.addEventListener('click', () => switchCrmModule('hotels'));
-    
-    addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
-    logoutBtn?.addEventListener('click', executeWorkspaceSignOut);
-    clearWorkspaceBtn?.addEventListener('click', resetBuilderWorkspaceForm);
-
-    openLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(true));
-    closeLedgerBtn?.addEventListener('click', () => toggleLedgerDrawer(false));
-
-    document.getElementById('standalone-add-hotel-btn')?.addEventListener('click', addStandaloneHotelBlock);
-    standaloneHotelExportBtn?.addEventListener('click', generateStandaloneHotelPDF);
-    standaloneHotelSaveBtn?.addEventListener('click', saveStandaloneHotelsToSupabase);
-
-    const submitBtn = document.getElementById('login-submit-btn');
-    submitBtn?.addEventListener('click', handleWorkspaceLogin);
-
-    // Attach dynamic input listeners to core inputs safely
-    coreInputIds.forEach(id => {
-        document.getElementById(id)?.addEventListener('input', updateLivePreview);
-    });
-
-    addDayBtn?.addEventListener('click', addItineraryDay);
-    addHotelBtn?.addEventListener('click', addHotelStayBlock);
-    addFlightBtn?.addEventListener('click', addFlightSectorBlock);
-    
-    document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
-    document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
-
-    checkExistingAuthSession();
-});
-
-function toggleLedgerDrawer(shouldOpen) {
-    if (shouldOpen) {
-        ledgerDrawer?.classList.add('open');
-        fetchAndRenderItinerariesLedger(); 
-    } else {
-        ledgerDrawer?.classList.remove('open');
-    }
+// Helper Function: Date Formatter defined at the top scale to avoid referencing faults
+function formatPremiumDate(dateStr) {
+    if (!dateStr || dateStr === "---") return "---";
+    const opts = { day: 'numeric', month: 'short', year: 'numeric' };
+    return new Date(dateStr).toLocaleDateString('en-US', opts);
 }
 
-async function checkExistingAuthSession() {
-    try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-        if (error) throw error;
-        if (session) {
-            if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace();
-            unlockPremiumWorkspace();
-        }
-    } catch (err) {
-        console.warn("Session trace synchronized.");
-    }
-}
-
-async function executeWorkspaceSignOut() {
-    try {
-        const { error } = await supabaseClient.auth.signOut();
-        if (error) throw error;
-        crmWorkspace.style.opacity = "0";
-        setTimeout(() => { window.location.reload(); }, 500);
-    } catch (err) {
-        alert(`Sign Out Fault: ${err.message}`);
-    }
-}
-
-function switchCrmModule(activeModule) {
-    const unselectedTabClass = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
-    const selectedTabClass = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
-
-    tabItinerary.className = unselectedTabClass;
-    tabCustomers.className = unselectedTabClass;
-    tabHotels.className = unselectedTabClass + " border border-dashed border-indigo-500/30";
-    
-    moduleItinerary.classList.add('hidden');
-    moduleCustomers.classList.add('hidden');
-    moduleHotels.classList.add('hidden');
-
-    if (activeModule === 'itinerary') {
-        tabItinerary.className = selectedTabClass;
-        moduleItinerary.classList.remove('hidden');
-        if (openLedgerBtn) openLedgerBtn.style.display = 'flex';
-        updateLivePreview();
-    } else if (activeModule === 'customers') {
-        tabCustomers.className = selectedTabClass;
-        moduleCustomers.classList.remove('hidden');
-        if (openLedgerBtn) openLedgerBtn.style.display = 'none';
-        toggleLedgerDrawer(false); 
-        fetchAndRenderCustomerBase(); 
-    } else if (activeModule === 'hotels') {
-        tabHotels.className = selectedTabClass + " border border-indigo-500/50";
-        moduleHotels.classList.remove('hidden');
-        if (openLedgerBtn) openLedgerBtn.style.display = 'none';
-        toggleLedgerDrawer(false);
-        if (standaloneHotelsList && standaloneHotelsList.children.length === 0) {
-            addStandaloneHotelBlock();
-        } else {
-            updateHotelVoucherLivePreview();
-        }
-    }
-    if (typeof lucide !== "undefined") lucide.createIcons();
-}
-
-function unlockPremiumWorkspace() {
-    loginGate.style.opacity = "0";
-    setTimeout(() => {
-        loginGate.style.display = "none";
-        crmWorkspace.classList.remove('hidden-workspace');
-        setTimeout(() => {
-            crmWorkspace.style.opacity = "1";
-            fetchAndRenderCustomerBase(); 
-            resetBuilderWorkspaceForm();
-        }, 50);
-    }, 500);
-}
-
-function resetBuilderWorkspaceForm() {
-    activeItineraryId = null;
-    if (activeRecordBadge) activeRecordBadge.classList.add('hidden');
-    
-    coreInputIds.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            if (id === 'pkg-inclusions') {
-                element.value = "Premium accommodations as detailed above\nAll airport transfers and local sightseeing via private AC vehicle\nDaily gourmet breakfast at the hotel properties";
-            } else if (id === 'pkg-exclusions') {
-                element.value = "International or domestic flight tickets\nPersonal laundry, tips, and items outside mentioned meals\nTravel insurance or emergency documentation support";
-            } else if (id === 'dmc-markup-pct') {
-                element.value = '0';
-            } else {
-                element.value = '';
-            }
-        }
-    });
-
-    if (pkgCustomerSelect) pkgCustomerSelect.value = '';
-    if (flightsContainer) flightsContainer.innerHTML = '';
-    if (hotelsContainer) hotelsContainer.innerHTML = '';
-    if (daysContainer) daysContainer.innerHTML = '';
-    
-    dayCount = 0;
-    hotelCount = 0;
-    flightCount = 0;
-
-    addFlightSectorBlock();
-    addHotelStayBlock(); 
-    addItineraryDay();    
-    calculateMarginMetrics();
-}
-
-async function fetchAndRenderItinerariesLedger() {
-    if (!savedItinerariesLedger) return;
-    try {
-        const { data: itineraries, error } = await supabaseClient
-            .from('itineraries')
-            .select('id, title, destination, total_price, created_at')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        savedItinerariesLedger.innerHTML = '';
-        if (itineraries.length === 0) {
-            savedItinerariesLedger.innerHTML = '<div class="text-gray-500 italic p-2 text-[11px]">No quotations saved on the CRM yet.</div>';
-            return;
-        }
-
-        itineraries.forEach(itin => {
-            const dateStamp = new Date(itin.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-            const priceFormatted = itin.total_price ? `₹${Number(itin.total_price).toLocaleString('en-IN')}` : '₹0';
-            
-            savedItinerariesLedger.innerHTML += `
-                <div class="relative group/card mb-2">
-                    <div onclick="loadSavedItineraryIntoWorkspace('${itin.id}')" class="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/60 hover:bg-white/10 cursor-pointer transition flex flex-col gap-1 text-left group">
-                        <div class="font-medium text-white group-hover:text-indigo-300 transition pr-6 truncate">${itin.title}</div>
-                        <div class="flex justify-between items-center text-[11px] text-gray-400">
-                            <span>${itin.destination}</span>
-                            <span class="font-mono text-emerald-400 font-semibold">${priceFormatted}</span>
-                        </div>
-                        <div class="text-[9px] text-gray-600 font-mono text-right mt-1">Saved: ${dateStamp}</div>
-                    </div>
-                    <button onclick="deleteItineraryRecord('${itin.id}', '${itin.title.replace(/'/g, "\\'")}')" class="absolute top-3 right-3 p-1 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-80 sm:opacity-0 group-hover/card:opacity-100 transition duration-200" title="Delete Quote">
-                        <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
-                    </button>
-                </div>
-            `;
-        });
-        if (typeof lucide !== "undefined") lucide.createIcons();
-    } catch (err) {
-        console.error("Ledger rendering failure:", err);
-    }
-}
-
-async function deleteItineraryRecord(id, title) {
-    const hasConfirmed = confirm(`Are you completely sure you want to permanently delete "${title}" from the CRM cloud?`);
-    if (!hasConfirmed) return;
-    try {
-        const { error } = await supabaseClient.from('itineraries').delete().eq('id', id);
-        if (error) throw error;
-        if (activeItineraryId === id) resetBuilderWorkspaceForm();
-        await fetchAndRenderItinerariesLedger();
-    } catch (err) {
-        alert(`Could not remove record: ${err.message}`);
-    }
-}
-
-async function loadSavedItineraryIntoWorkspace(id) {
-    try {
-        const { data: itin, error } = await supabaseClient.from('itineraries').select('*').eq('id', id).single();
-        if (error) throw error;
-        if (!itin) return;
-
-        activeItineraryId = itin.id;
-        if (activeRecordBadge) activeRecordBadge.classList.remove('hidden');
-
-        document.getElementById('pkg-title').value = itin.title || '';
-        document.getElementById('pkg-destination').value = itin.destination || '';
-        document.getElementById('pkg-date').value = itin.start_date || '';
-        document.getElementById('pkg-pax').value = itin.number_of_people || '';
-        document.getElementById('pkg-vehicle').value = itin.vehicle_used || '';
-        
-        if (pkgCustomerSelect) pkgCustomerSelect.value = itin.customer_id || '';
-
-        document.getElementById('pkg-inclusions').value = Array.isArray(itin.inclusions) ? itin.inclusions.join('\n') : '';
-        document.getElementById('pkg-exclusions').value = Array.isArray(itin.exclusions) ? itin.exclusions.join('\n') : '';
-
-        if (document.getElementById('dmc-net-cost')) document.getElementById('dmc-net-cost').value = itin.dmc_net_cost || '';
-        if (document.getElementById('dmc-markup-pct')) document.getElementById('dmc-markup-pct').value = itin.dmc_markup_pct || '0';
-
-        if (flightsContainer) flightsContainer.innerHTML = '';
-        if (hotelsContainer) hotelsContainer.innerHTML = '';
-        if (daysContainer) daysContainer.innerHTML = '';
-        
-        flightCount = 0;
-        hotelCount = 0;
-        dayCount = 0;
-
-        if (Array.isArray(itin.flight_details) && itin.flight_details.length > 0) {
-            itin.flight_details.forEach(fl => {
-                addFlightSectorBlock();
-                const currentBlock = flightsContainer.lastChild;
-                currentBlock.querySelector('.fl-num').value = fl.flight_number || '';
-                currentBlock.querySelector('.fl-route').value = fl.route || '';
-                currentBlock.querySelector('.fl-duration').value = fl.duration || '';
-                currentBlock.querySelector('.fl-dep-date').value = fl.dep_date || '';
-                currentBlock.querySelector('.fl-dep-time').value = fl.dep_time || '';
-                currentBlock.querySelector('.fl-arr-date').value = fl.arr_date || '';
-                currentBlock.querySelector('.fl-arr-time').value = fl.arr_time || '';
-                
-                if (currentBlock.querySelector('.fl-net')) currentBlock.querySelector('.fl-net').value = fl.net_cost || '';
-                if (currentBlock.querySelector('.fl-margin')) currentBlock.querySelector('.fl-margin').value = fl.margin_pct || '0';
-
-                if (fl.has_leg2 && fl.leg2) {
-                    currentBlock.querySelector('.fl-has-leg2').checked = true;
-                    const leg2Container = document.getElementById(`flight-leg2-container-${flightCount}`);
-                    if(leg2Container) leg2Container.classList.remove('hidden');
-                    currentBlock.querySelector('.fl-num2').value = fl.leg2.flight_number || '';
-                    currentBlock.querySelector('.fl-route2').value = fl.leg2.route || '';
-                    currentBlock.querySelector('.fl-duration2').value = fl.leg2.duration || '';
-                    currentBlock.querySelector('.fl-dep-date2').value = fl.leg2.dep_date || '';
-                    currentBlock.querySelector('.fl-dep-time2').value = fl.leg2.dep_time || '';
-                    currentBlock.querySelector('.fl-arr-date2').value = fl.leg2.arr_date || '';
-                    currentBlock.querySelector('.fl-arr-time2').value = fl.leg2.arr_time || '';
-                }
-            });
-        }
-
-        if (Array.isArray(itin.hotel_details) && itin.hotel_details.length > 0) {
-            itin.hotel_details.forEach(ht => {
-                addHotelStayBlock();
-                const currentBlock = hotelsContainer.lastChild;
-                currentBlock.querySelector('.hotel-name').value = ht.hotel_name || '';
-                currentBlock.querySelector('.hotel-in').value = ht.check_in || '';
-                currentBlock.querySelector('.hotel-out').value = ht.check_out || '';
-                currentBlock.querySelector('.hotel-nights').value = ht.nights || '0';
-            });
-        }
-
-        if (daysContainer && daysContainer.children.length === 0) {
-            addItineraryDay();
-        }
-
-        toggleLedgerDrawer(false); 
-        calculateMarginMetrics();
-
-    } catch (err) {
-        alert(`Could not load itinerary data: ${err.message}`);
-    }
-}
-
+// Master Margin Analytics Engine
 function calculateMarginMetrics() {
     let flightNetTotal = 0;
     let grossAirfareTotal = 0;
@@ -389,14 +70,7 @@ function calculateMarginMetrics() {
     if (grossLabel) grossLabel.innerText = `₹${Math.round(combinedClientGrossQuote).toLocaleString('en-IN')}`;
 }
 
-function updateLivePreview() {
-    calculateMarginMetrics(); 
-    if(previewPane) {
-        previewPane.innerHTML = compileItineraryHTML();
-    }
-}
-
-// ====== HIGH-END HEADOUT/AGODA-LEVEL PROPOSAL TEMPLATE ENGINE ======
+// agoda/Headout Aesthetic Preview Document Builder
 function compileItineraryHTML() {
     const title = document.getElementById('pkg-title')?.value || "Boutique Experience Proposal";
     const dest = document.getElementById('pkg-destination')?.value || "---";
@@ -419,12 +93,12 @@ function compileItineraryHTML() {
         const hasLeg2 = block.querySelector('.fl-has-leg2')?.checked;
 
         flightsHtml += `
-            <div style="border-left: 2.5px solid #000000; padding-left: 14px; margin-bottom: 16px; font-size: 11.5px; font-family: -apple-system, sans-serif;">
-                <div style="font-weight: 700; color: #111827; font-size: 12.5px; margin-bottom: 3px; letter-spacing:-0.2px;">✈ Flight Transit Segment: ${fRoute} (${fNum})</div>
+            <div style="border-left: 2.5px solid #000000; padding-left: 14px; margin-bottom: 16px; font-size: 11.5px;">
+                <div style="font-weight: 700; color: #111827; font-size: 12.5px; margin-bottom: 3px;">✈ Flight Transit Segment: ${fRoute} (${fNum})</div>
                 <div style="color: #4b5563; line-height: 1.5;">
                     <strong>Departs:</strong> ${fDepD} @ ${fDepT} &nbsp;&bull;&nbsp; 
                     <strong>Arrives:</strong> ${fArrD} @ ${fArrT} &nbsp;&bull;&nbsp; 
-                    <strong>Duration:</strong> <span style="background:#f3f4f6; padding:1px 5px; border-radius:4px; font-weight:600; color:#1f2937;">${fDur}</span>
+                    <strong>Duration:</strong> <span style="background:#f3f4f6; padding:1px 5px; border-radius:4px; font-weight:600;">${fDur}</span>
                 </div>
             </div>
         `;
@@ -439,7 +113,7 @@ function compileItineraryHTML() {
             const fArrT2 = block.querySelector('.fl-arr-time2')?.value || "---";
 
             flightsHtml += `
-                <div style="border-left: 2.5px dashed #9ca3af; padding-left: 14px; margin-left: 15px; margin-bottom: 16px; font-size: 11px; background: #fafafa; padding-top: 6px; padding-bottom: 6px; border-radius:0 6px 6px 0;">
+                <div style="border-left: 2.5px dashed #9ca3af; padding-left: 14px; margin-left: 15px; margin-bottom: 16px; font-size: 11px; background: #fafafa; padding-top: 6px; padding-bottom: 6px; border-radius:6px;">
                     <div style="font-weight: 700; color: #4b5563; margin-bottom: 3px;">↳ Connecting Transit Leg 2: ${fRoute2} (${fNum2})</div>
                     <div style="color: #6b7280;">
                         <strong>Departs:</strong> ${fDepD2} @ ${fDepT2} &nbsp;&bull;&nbsp; 
@@ -461,9 +135,9 @@ function compileItineraryHTML() {
 
         hotelsHtml += `
             <tr style="border-bottom: 1px solid #e5e7eb; font-size: 11.5px; color: #374151;">
-                <td style="padding: 12px 10px; font-weight: 600; color: #111827; max-width:280px;">🏢 ${hName}</td>
-                <td style="padding: 12px 10px; text-align: center; font-weight:500;">${hIn}</td>
-                <td style="padding: 12px 10px; text-align: center; font-weight:500;">${hOut}</td>
+                <td style="padding: 12px 10px; font-weight: 600; color: #111827;">🏢 ${hName}</td>
+                <td style="padding: 12px 10px; text-align: center;">${hIn}</td>
+                <td style="padding: 12px 10px; text-align: center;">${hOut}</td>
                 <td style="padding: 12px 10px; text-align: center; font-weight: 700; color: #4f46e5;"><span style="background:#e0e7ff; padding:3px 8px; border-radius:6px;">${hNights} N</span></td>
             </tr>
         `;
@@ -474,8 +148,8 @@ function compileItineraryHTML() {
     const inclusionsArray = inclusionsText.split('\n').filter(item => item.trim() !== "");
     const exclusionsArray = exclusionsText.split('\n').filter(item => item.trim() !== "");
 
-    let incHtml = inclusionsArray.map(item => `<li style="margin-bottom:5px; position:relative; list-style-type:none; padding-left:14px;"><span style="position:absolute; left:0; color:#10b981;">✔</span>${item}</li>`).join('');
-    let excHtml = exclusionsArray.map(item => `<li style="margin-bottom:5px; position:relative; list-style-type:none; padding-left:14px;"><span style="position:absolute; left:0; color:#ef4444;">&times;</span>${item}</li>`).join('');
+    let incHtml = inclusionsArray.map(item => `<li style="margin-bottom:5px; list-style-type:none; padding-left:14px; position:relative;"><span style="position:absolute; left:0; color:#10b981;">✔</span>${item}</li>`).join('');
+    let excHtml = exclusionsArray.map(item => `<li style="margin-bottom:5px; list-style-type:none; padding-left:14px; position:relative;"><span style="position:absolute; left:0; color:#ef4444;">&times;</span>${item}</li>`).join('');
 
     let daysHtml = '';
     const dayBlocks = daysContainer ? daysContainer.children : [];
@@ -484,8 +158,8 @@ function compileItineraryHTML() {
         const dDesc = block.querySelector('.day-desc-input')?.value || 'Logistics details to follow.';
         daysHtml += `
             <div style="margin-bottom: 22px; page-break-inside: avoid; background:#fefefe; padding:16px; border-radius:12px; border:1px solid #f3f4f6;">
-                <h4 style="font-size: 13px; font-weight: 800; color: #111827; margin: 0 0 6px 0; text-transform:uppercase; letter-spacing:0.3px;">DAY 0${index + 1} &bull; ${dTitle}</h4>
-                <p style="font-size: 11.5px; color: #4b5563; margin: 0; line-height: 1.65; text-align: justify;">${dDesc}</p>
+                <h4 style="font-size: 13px; font-weight: 800; color: #111827; margin: 0 0 6px 0; text-transform:uppercase;">DAY 0${index + 1} &bull; ${dTitle}</h4>
+                <p style="font-size: 11.5px; color: #4b5563; margin: 0; line-height: 1.65;">${dDesc}</p>
             </div>
         `;
     });
@@ -496,25 +170,22 @@ function compileItineraryHTML() {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 25px; page-break-inside: avoid;">
                 <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <span style="font-size: 9px; text-transform: uppercase; tracking: 0.5px; color: #4b5563; font-weight:700; display:block; margin-bottom:2px;">Land Operations Package</span>
-                        <span style="font-size: 10.5px; color: #6b7280;">Boutique coordination logistics</span>
+                        <span style="font-size: 9px; text-transform: uppercase; tracking: 0.5px; color: #4b5563; font-weight:700; display:block;">Land Operations Package</span>
                     </div>
-                    <div style="font-size: 15px; font-weight: 700; color: #111827; font-family:monospace;">₹${Number(price).toLocaleString('en-IN')}</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #111827; font-family:monospace;">₹${Number(price).toLocaleString('en-IN')}</div>
                 </div>
                 <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <span style="font-size: 9px; text-transform: uppercase; tracking: 0.5px; color: #4b5563; font-weight:700; display:block; margin-bottom:2px;">Airfare Routing Services</span>
-                        <span style="font-size: 10.5px; color: #6b7280;">Live transactional airline quote</span>
+                        <span style="font-size: 9px; text-transform: uppercase; tracking: 0.5px; color: #4b5563; font-weight:700; display:block;">Airfare Quote Component</span>
                     </div>
-                    <div style="font-size: 15px; font-weight: 700; color: #111827; font-family:monospace;">₹${Number(airfare).toLocaleString('en-IN')}</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #111827; font-family:monospace;">₹${Number(airfare).toLocaleString('en-IN')}</div>
                 </div>
             </div>
-            <div style="background: #0f172a; color: white; border-radius: 14px; padding: 20px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid; box-shadow:0 4px 12px rgba(15,23,42,0.15);">
+            <div style="background: #0f172a; color: white; border-radius: 14px; padding: 20px; margin-top: 14px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
                 <div>
-                    <span style="font-size: 10px; text-transform: uppercase; tracking: 1px; color: #94a3b8; font-weight:700; display:block; margin-bottom:2px;">TOTAL CONSOLIDATED EXPEDITION INVESTMENT</span>
-                    <span style="font-size: 11px; color: #cbd5e1;">All inclusive of corporate luxury taxes & handling metrics</span>
+                    <span style="font-size: 10px; text-transform: uppercase; tracking: 1px; color: #94a3b8; font-weight:700; display:block;">TOTAL CONSOLIDATED EXPEDITION INVESTMENT</span>
                 </div>
-                <div style="font-size: 21px; font-weight: 800; color: #10b981; font-family:monospace;">
+                <div style="font-size: 20px; font-weight: 800; color: #10b981; font-family:monospace;">
                     ₹${(Number(price) + Number(airfare)).toLocaleString('en-IN')}/-
                 </div>
             </div>
@@ -522,7 +193,7 @@ function compileItineraryHTML() {
     }
 
     return `
-        <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; background: #ffffff;">
+        <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; background: #ffffff;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111827; padding-bottom: 18px; margin-bottom: 25px;">
                 <div>
                     <h2 style="font-size: 23px; font-weight: 900; tracking: -0.5px; color: #111827; margin: 0;">TRAVEL WORLD WIDE</h2>
@@ -530,16 +201,16 @@ function compileItineraryHTML() {
                 </div>
                 <div style="text-align: right; font-size: 11px; color: #4b5563; line-height: 1.4;">
                     <p style="margin:0; font-weight: 700; color: #111827;">salestravelworldwide@gmail.com</p>
-                    <p style="margin:0; font-weight: 500;">Line: +91 88926 89595</p>
+                    <p style="margin:0;">+91 88926 89595</p>
                 </div>
             </div>
 
             <div style="background: #f9fafb; border-radius: 14px; padding: 18px; margin-bottom: 25px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; font-size: 12px; border: 1px solid #e5e7eb;">
-                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Experience Package</strong> <span style="color: #111827; font-weight: 700; font-size:12.5px;">${title}</span></div>
-                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Target Destination</strong> <span style="color: #111827; font-weight: 700; font-size:12.5px;">📍 ${dest}</span></div>
-                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Departure Date</strong> <span style="color: #111827; font-weight: 600;">${formatPremiumDate(date)}</span></div>
-                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Accompanying Roster</strong> <span style="color: #111827; font-weight: 600;">👥 ${pax} Guests Allotted</span></div>
-                <div style="grid-column: span 2; border-top:1px dashed #e5e7eb; padding-top:10px; margin-top:4px;"><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; tracking:0.3px; display:block; margin-bottom:2px;">Ground Logistics Fleet</strong> <span style="color: #111827; font-weight: 600;">🚘 ${vehicle}</span></div>
+                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; display:block; margin-bottom:2px;">Experience Package</strong> <span style="color: #111827; font-weight: 700; font-size:12.5px;">${title}</span></div>
+                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; display:block; margin-bottom:2px;">Target Destination</strong> <span style="color: #111827; font-weight: 700; font-size:12.5px;">📍 ${dest}</span></div>
+                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; display:block; margin-bottom:2px;">Departure Date</strong> <span style="color: #111827; font-weight: 600;">${formatPremiumDate(date)}</span></div>
+                <div><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; display:block; margin-bottom:2px;">Accompanying Roster</strong> <span style="color: #111827; font-weight: 600;">👥 ${pax} Guests Allotted</span></div>
+                <div style="grid-column: span 2; border-top:1px dashed #e5e7eb; padding-top:10px; margin-top:4px;"><strong style="color: #4b5563; text-transform:uppercase; font-size:9.5px; display:block; margin-bottom:2px;">Ground Logistics Fleet</strong> <span style="color: #111827; font-weight: 600;">🚘 ${vehicle}</span></div>
             </div>
 
             ${flightBlocks.length > 0 ? `
@@ -561,14 +232,14 @@ function compileItineraryHTML() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${hotelsHtml || '<tr><td colspan="4" style="color:#9ca3af; font-style:italic; padding:14px; font-size:11px; text-align:center;">No accommodations indexed in current routing.</td></tr>'}
+                        ${hotelsHtml || '<tr><td colspan="4" style="color:#9ca3af; font-style:italic; padding:14px; text-align:center;">No accommodations indexed in current routing.</td></tr>'}
                     </tbody>
                 </table>
             </div>
 
             <div style="margin-bottom: 25px;">
                 <h3 style="font-size: 11px; font-weight: 800; color: #111827; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid #111827; padding-bottom: 5px; margin-bottom: 14px;">III. Curated Experience Day-Wise Timeline Loops</h3>
-                ${daysHtml || '<p style="color:#9ca3af; font-style:italic; font-size:11px; text-align:center; padding:10px 0;">No timeline slots mapped yet.</p>'}
+                ${daysHtml || '<p style="color:#9ca3af; font-style:italic; font-size:11px; text-align:center;">No timeline slots mapped yet.</p>'}
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; border-top: 1px solid #e5e7eb; padding-top: 18px; margin-bottom: 10px; page-break-inside: avoid;">
@@ -591,6 +262,121 @@ function compileItineraryHTML() {
     `;
 }
 
+function updateLivePreview() {
+    calculateMarginMetrics(); 
+    if(previewPane) {
+        previewPane.innerHTML = compileItineraryHTML();
+    }
+}
+
+// ====== SUPABASE BACKEND SYNCHRONIZATION PIPELINES ======
+async function saveItineraryToSupabase() {
+    const saveBtn = document.getElementById('save-btn');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = "Saving to Cloud...";
+    saveBtn.style.opacity = "0.6";
+
+    const title = document.getElementById('pkg-title').value;
+    const destination = document.getElementById('pkg-destination').value;
+    const startDate = document.getElementById('pkg-date').value || null;
+    const numberOfPeople = parseInt(document.getElementById('pkg-pax').value) || 1;
+    const vehicleUsed = document.getElementById('pkg-vehicle').value;
+    const totalPrice = parseFloat(document.getElementById('pkg-price').value) || 0;
+    const customerId = document.getElementById('pkg-customer-select').value || null;
+    const airfarePrice = parseFloat(document.getElementById('pkg-airfare').value) || 0;
+
+    const dmcNetCost = parseFloat(document.getElementById('dmc-net-cost').value) || 0;
+    const dmcMarkupPct = parseFloat(document.getElementById('dmc-markup-pct').value) || 0;
+
+    const inclusionsText = document.getElementById('pkg-inclusions')?.value || "";
+    const exclusionsText = document.getElementById('pkg-exclusions')?.value || "";
+    const inclusions = inclusionsText.split('\n').filter(item => item.trim() !== "");
+    const exclusions = exclusionsText.split('\n').filter(item => item.trim() !== "");
+
+    const hotelBlocks = hotelsContainer ? hotelsContainer.children : [];
+    const hotelsPayload = Array.from(hotelBlocks).map(block => {
+        return {
+            hotel_name: block.querySelector('.hotel-name').value || "TBD",
+            check_in: block.querySelector('.hotel-in').value || null,
+            check_out: block.querySelector('.hotel-out').value || null,
+            nights: parseInt(block.querySelector('.hotel-nights').value) || 0
+        };
+    });
+
+    const flightBlocks = flightsContainer ? flightsContainer.children : [];
+    const flightsPayload = Array.from(flightBlocks).map(block => {
+        return {
+            flight_number: block.querySelector('.fl-num').value || "TBD",
+            route: block.querySelector('.fl-route').value || "---",
+            duration: block.querySelector('.fl-duration').value || "---",
+            dep_date: block.querySelector('.fl-dep-date').value || null,
+            dep_time: block.querySelector('.fl-dep-time').value || "---",
+            arr_date: block.querySelector('.fl-arr-date').value || null,
+            arr_time: block.querySelector('.fl-arr-time').value || "---",
+            net_cost: parseFloat(block.querySelector('.fl-net')?.value) || 0,
+            margin_pct: parseFloat(block.querySelector('.fl-margin')?.value) || 0,
+            has_leg2: block.querySelector('.fl-has-leg2').checked,
+            leg2: block.querySelector('.fl-has-leg2').checked ? {
+                flight_number: block.querySelector('.fl-num2').value || "TBD",
+                route: block.querySelector('.fl-route2').value || "---",
+                duration: block.querySelector('.fl-duration2').value || "---",
+                dep_date: block.querySelector('.fl-dep-date2').value || null,
+                dep_time: block.querySelector('.fl-dep-time2').value || "---",
+                arr_date: block.querySelector('.fl-arr-date2').value || null,
+                arr_time: block.querySelector('.fl-arr-time2').value || "---"
+            } : null
+        };
+    });
+
+    if (!title || !destination) {
+        alert("Please provide at least a Title and Destination to save this quotation.");
+        saveBtn.innerText = originalText;
+        saveBtn.style.opacity = "1";
+        return;
+    }
+
+    const payload = {
+        title,
+        destination,
+        start_date: startDate,
+        number_of_people: numberOfPeople,
+        vehicle_used: vehicleUsed,
+        total_price: totalPrice,
+        inclusions,
+        exclusions,
+        hotel_details: hotelsPayload,
+        customer_id: customerId,
+        flight_details: flightsPayload, 
+        airfare_price: airfarePrice,
+        dmc_net_cost: dmcNetCost,
+        dmc_markup_pct: dmcMarkupPct
+    };
+
+    try {
+        let dbResult;
+        if (activeItineraryId) {
+            dbResult = await supabaseClient.from('itineraries').update(payload).eq('id', activeItineraryId);
+        } else {
+            dbResult = await supabaseClient.from('itineraries').insert([payload]);
+        }
+        if (dbResult.error) throw dbResult.error;
+
+        saveBtn.innerText = "✓ Synced to CRM";
+        saveBtn.style.backgroundColor = "#059669"; 
+        await fetchAndRenderItinerariesLedger(); 
+        setTimeout(() => {
+            saveBtn.innerText = originalText;
+            saveBtn.style.backgroundColor = ""; 
+            saveBtn.style.opacity = "1";
+        }, 2500);
+    } catch (err) {
+        console.error("Database operation failure:", err);
+        alert(`Could not sync to cloud: ${err.message}`);
+        saveBtn.innerText = originalText;
+        saveBtn.style.opacity = "1";
+    }
+}
+
 function generateProfessionalPDF() {
     const title = document.getElementById('pkg-title')?.value || "Travel_WW_Quotation";
     const element = previewPane;
@@ -605,7 +391,7 @@ function generateProfessionalPDF() {
     html2pdf().set(opt).from(element).save();
 }
 
-// ====== STANDALONE HOTEL QUOTATION GENERATOR DESK FUNCTIONALITIES ======
+// ====== STANDALONE HOTEL VOUCHER HANDLERS ======
 function addStandaloneHotelBlock() {
     standaloneHotelCount++;
     const hotelBlock = document.createElement('div');
@@ -621,13 +407,11 @@ function addStandaloneHotelBlock() {
                 <i data-lucide="trash" class="h-3 w-3"></i> Delete
             </button>
         </div>
-
         <div class="space-y-3 text-xs">
             <div>
                 <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Hotel Structure Title</label>
-                <input type="text" placeholder="e.g., Centara Grand Mirage Beach Resort Pattaya" class="sh-name w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none" oninput="updateHotelVoucherLivePreview()">
+                <input type="text" placeholder="e.g., Centara Grand Mirage Beach Resort" class="sh-name w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none" oninput="updateHotelVoucherLivePreview()">
             </div>
-            
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Check-In Date</label>
@@ -638,11 +422,10 @@ function addStandaloneHotelBlock() {
                     <input type="date" class="sh-out w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none" onchange="calculateStandaloneNights(${standaloneHotelCount})">
                 </div>
                 <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Duration (Night/s)</label>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Duration</label>
                     <input type="text" readonly value="0 Nights" class="sh-nights w-full bg-indigo-950/20 border border-indigo-500/20 rounded-xl px-3 py-2 text-indigo-300 font-bold font-mono text-center focus:outline-none cursor-not-allowed">
                 </div>
             </div>
-
             <div class="grid grid-cols-2 gap-3 bg-white/[0.01] border border-white/5 p-2 rounded-xl">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Number of Adults</label>
@@ -653,7 +436,6 @@ function addStandaloneHotelBlock() {
                     <input type="number" value="0" min="0" class="sh-kids w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none" oninput="updateHotelVoucherLivePreview()">
                 </div>
             </div>
-
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1 pl-0.5">Star Rating Classification</label>
@@ -669,7 +451,6 @@ function addStandaloneHotelBlock() {
                     <input type="number" placeholder="e.g., 24500" class="sh-price w-full bg-white/5 border border-emerald-500/20 rounded-xl px-3 py-2.5 text-emerald-400 text-sm font-semibold font-mono focus:outline-none" oninput="updateHotelVoucherLivePreview()">
                 </div>
             </div>
-
             <div>
                 <label class="block text-[10px] text-indigo-300 uppercase tracking-wider mb-1 pl-0.5 flex items-center gap-1">
                     <i data-lucide="clipboard-paste" class="h-3 w-3"></i> Hotel Amenities / Details (Paste from B2B Portal)
@@ -699,13 +480,11 @@ function reindexStandaloneHotels() {
         const removeBtn = block.querySelector('button');
         if(removeBtn) removeBtn.setAttribute('onclick', `removeStandaloneHotelBlock(${currentNum})`);
     });
-    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function calculateStandaloneNights(id) {
     const block = document.getElementById(`standalone-hotel-block-${id}`);
     if (!block) return;
-    
     const checkInStr = block.querySelector('.sh-in').value;
     const checkOutStr = block.querySelector('.sh-out').value;
     const nightsInput = block.querySelector('.sh-nights');
@@ -713,14 +492,8 @@ function calculateStandaloneNights(id) {
     if (checkInStr && checkOutStr) {
         const date1 = new Date(checkInStr);
         const date2 = new Date(checkOutStr);
-        const timeDiff = date2.getTime() - date1.getTime();
-        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        
-        if (daysDiff > 0) {
-            nightsInput.value = `${daysDiff} Night${daysDiff > 1 ? 's' : ''}`;
-        } else {
-            nightsInput.value = `0 Nights`;
-        }
+        const daysDiff = Math.ceil((date2.getTime() - date1.getTime()) / (1000 * 3600 * 24));
+        nightsInput.value = daysDiff > 0 ? `${daysDiff} Night${daysDiff > 1 ? 's' : ''}` : `0 Nights`;
     } else {
         nightsInput.value = `0 Nights`;
     }
@@ -747,98 +520,63 @@ function compileHotelVoucherHTML() {
 
         let portalAmenitiesHtml = '';
         if (rawAmenities) {
-            const lines = rawAmenities.split('\n').filter(line => line.trim() !== "");
-            portalAmenitiesHtml = lines.map(line => `
+            portalAmenitiesHtml = rawAmenities.split('\n').filter(line => line.trim() !== "").map(line => `
                 <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; color: #334155;">
                     <span style="color: #10b981; font-weight: bold;">✔</span> ${line.trim()}
                 </div>
             `).join('');
         } else {
-            portalAmenitiesHtml = `
-                <div style="color: #94a3b8; font-style: italic; font-size: 11px;">No custom portal specifications input listed.</div>
-            `;
+            portalAmenitiesHtml = `<div style="color: #94a3b8; font-style: italic; font-size: 11px;">No custom portal specifications input listed.</div>`;
         }
 
         vouchersContentHtml += `
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 24px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.02); page-break-inside: avoid;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #cbd5e1; padding-bottom: 16px; margin-bottom: 18px;">
                     <div>
-                        <span style="font-size: 10px; font-weight: 700; color: #10b981; background: #ecfdf5; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; tracking: 0.5px; display: inline-block; margin-bottom: 8px;">Voucher Segment 0${index + 1}</span>
+                        <span style="font-size: 10px; font-weight: 700; color: #10b981; background: #ecfdf5; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">Voucher Segment 0${index + 1}</span>
                         <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3;">${hName}</h3>
-                        <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0; font-weight: 500;">Classification: <span style="color: #4f46e5; font-weight: 700;">${hCategory}</span></p>
+                        <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Classification: <span style="color: #4f46e5; font-weight: 700;">${hCategory}</span></p>
                     </div>
-                    <div style="text-align: right;">
-                        <span style="font-size: 11px; font-weight: 700; color: #ffffff; background: #0f172a; padding: 6px 12px; border-radius: 8px; display: inline-block; text-transform: uppercase; tracking: 0.5px;">CONFIRMED</span>
-                    </div>
+                    <div style="text-align: right;"><span style="font-size: 11px; font-weight: 700; color: #ffffff; background: #0f172a; padding: 6px 12px; border-radius: 8px; display: inline-block;">CONFIRMED</span></div>
                 </div>
-
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #f8fafc; padding: 14px; border-radius: 12px; margin-bottom: 18px; border: 1px solid #f1f5f9;">
-                    <div>
-                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-IN</span>
-                        <strong style="font-size: 12.5px; color: #0f172a; display: block;">${hIn}</strong>
-                        <span style="font-size: 10px; color: #94a3b8;">From 14:00 hrs</span>
-                    </div>
-                    <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;">
-                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">CHECK-OUT</span>
-                        <strong style="font-size: 12.5px; color: #0f172a; display: block;">${hOut}</strong>
-                        <span style="font-size: 10px; color: #94a3b8;">Until 12:00 hrs</span>
-                    </div>
-                    <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;">
-                        <span style="font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">STAY LENGTH</span>
-                        <strong style="font-size: 13.5px; color: #4f46e5; font-weight: 800;">${hNights}</strong>
-                    </div>
+                    <div><span style="font-size: 9px; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px;">CHECK-IN</span><strong style="font-size: 12.5px; color: #0f172a; display: block;">${hIn}</strong></div>
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;"><span style="font-size: 9px; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px;">CHECK-OUT</span><strong style="font-size: 12.5px; color: #0f172a; display: block;">${hOut}</strong></div>
+                    <div style="border-left: 1px solid #e2e8f0; padding-left: 14px;"><span style="font-size: 9px; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px;">STAY LENGTH</span><strong style="font-size: 13.5px; color: #4f46e5; font-weight: 800;">${hNights}</strong></div>
                 </div>
-
                 <div style="display: flex; gap: 20px; align-items: center; background: #eef2ff; padding: 10px 14px; border-radius: 10px; margin-bottom: 18px; font-size: 12px; color: #3730a3; font-weight: 600; border: 1px solid #e0e7ff;">
-                    <div style="display: flex; align-items: center; gap: 4px;">👥 <strong>Occupancy Allotted:</strong></div>
+                    <div>👥 <strong>Occupancy Allotted:</strong></div>
                     <div>👤 ${hAdults} Adult${hAdults > 1 ? 's' : ''}</div>
                     ${hKids > 0 ? `<div style="border-left: 1px solid #c7d2fe; padding-left: 16px;">👶 ${hKids} Child${hKids > 1 ? 'ren' : ''}</div>` : ''}
                 </div>
-
                 <div style="background: #fafafa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
-                    <div style="font-size: 10.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; tracking: 0.5px; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">Property Amenities & Room Specifications</div>
-                    <div style="display: grid; grid-template-columns: 1fr; sm:grid-template-columns: 1fr 1fr; gap: 4px 16px;">
-                        ${portalAmenitiesHtml}
-                    </div>
+                    <div style="font-size: 10.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 10px;">Property Amenities & Room Specifications</div>
+                    <div style="display: grid; grid-template-columns: 1fr sm:grid-template-columns: 1fr 1fr; gap: 4px 16px;">${portalAmenitiesHtml}</div>
                 </div>
-
-                <div style="margin-top: 16px; text-align: right; font-size: 12px; color: #475569;">
-                    Room Segment Value: <strong style="color: #10b981; font-size: 14.5px; font-family: monospace; font-weight: 700;">₹${Math.round(hPrice).toLocaleString('en-IN')}/-</strong>
-                </div>
+                <div style="margin-top: 16px; text-align: right; font-size: 12px; color: #475569;">Room Segment Value: <strong style="color: #10b981; font-size: 14.5px; font-family: monospace;">₹${Math.round(hPrice).toLocaleString('en-IN')}/-</strong></div>
             </div>
         `;
     });
 
     return `
-        <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; background: #ffffff;">
+        <div style="padding: 30px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1e293b; background: #ffffff;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 25px;">
                 <div>
-                    <h2 style="font-size: 22px; font-weight: 900; tracking: -0.5px; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
+                    <h2 style="font-size: 22px; font-weight: 900; color: #0f172a; margin: 0;">TRAVEL WORLD WIDE</h2>
                     <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; tracking: 1.5px; font-weight: 600;">Luxury Hotel Confirmation Voucher</p>
                 </div>
                 <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.4;">
                     <p style="margin:0; font-weight: 700; color: #0f172a;">salestravelworldwide@gmail.com</p>
-                    <p style="margin:0; font-weight: 500;">Desk Line: +91 88926 89595</p>
+                    <p style="margin:0;">Desk Line: +91 88926 89595</p>
                 </div>
             </div>
-
             ${vouchersContentHtml || '<p style="color:#94a3b8; font-style:italic; font-size:12px; text-align:center; padding:40px 0;">No active properties allocated inside the voucher workspace desk ledger yet.</p>'}
-
             ${blocks.length > 0 ? `
-            <div style="margin-top: 30px; background: #0f172a; color: #ffffff; border-radius: 14px; padding: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(0,0,0,0.05); page-break-inside: avoid;">
-                <div>
-                    <span style="font-size: 10px; text-transform: uppercase; tracking: 1px; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 2px;">TOTAL CONSOLIDATED ACCOMMODATION INVESTMENT</span>
-                    <span style="font-size: 11px; color: #cbd5e1;">All-inclusive of corporate agency coordination levies & resort taxes</span>
-                </div>
-                <div style="font-size: 22px; font-weight: 800; color: #10b981; font-family: monospace;">
-                    ₹${Math.round(totalGrossQuotationAggregate).toLocaleString('en-IN')}/-
-                </div>
+            <div style="margin-top: 30px; background: #0f172a; color: #ffffff; border-radius: 14px; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <div><span style="font-size: 10px; text-transform: uppercase; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 2px;">TOTAL CONSOLIDATED ACCOMMODATION INVESTMENT</span></div>
+                <div style="font-size: 22px; font-weight: 800; color: #10b981; font-family: monospace;">₹${Math.round(totalGrossQuotationAggregate).toLocaleString('en-IN')}/-</div>
             </div>
             ` : ''}
-
-            <div style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 10px; color: #94a3b8; line-height: 1.5; page-break-inside: avoid;">
-                <strong>Important Voucher Guidelines:</strong> This document represents an official boutique booking summary quote curated by Travel World Wide. Room confirmations remain subject to live hotel block inventory availability indices upon direct payment routing sequences. Individual passport identification maps must be provided during properties check-in protocols.
-            </div>
         </div>
     `;
 }
@@ -853,44 +591,17 @@ function generateStandaloneHotelPDF() {
     const title = "Hotel_Voucher_Quotation";
     const htmlContent = compileHotelVoucherHTML();
     const printWindow = window.open('', '_blank', 'width=950,height=850');
-    
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>${title}_Proposal</title>
-            <style>
-                body { margin: 0; background: #ffffff; }
-                @media print {
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-            </style>
-        </head>
-        <body>
-            ${htmlContent}
-            <script>
-                window.onload = function() {
-                    window.print();
-                };
-            </script>
-        </body>
-        </html>
-    `);
+    printWindow.document.write(`<html><head><title>${title}_Proposal</title></head><body style="margin:0;">${htmlContent}<script>window.onload=function(){window.print();};</script></body></html>`);
     printWindow.document.close();
 }
 
 async function saveStandaloneHotelsToSupabase() {
     const blocks = standaloneHotelsList ? standaloneHotelsList.children : [];
-    if (blocks.length === 0) {
-        alert("Please map at least one hotel property slot to trigger saving loops.");
-        return;
-    }
-
-    standaloneHotelSaveBtn.innerText = "Syncing Cloud Grid...";
+    if (blocks.length === 0) return;
+    standaloneHotelSaveBtn.innerText = "Syncing Cloud...";
     standaloneHotelSaveBtn.disabled = true;
 
-    const firstHotelTitle = blocks[0].querySelector('.sh-name').value || "Standalone Voucher Group";
     let totalAggregateValue = 0;
-
     const payloadHotels = Array.from(blocks).map(block => {
         const val = parseFloat(block.querySelector('.sh-price').value) || 0;
         totalAggregateValue += val;
@@ -907,19 +618,14 @@ async function saveStandaloneHotelsToSupabase() {
         };
     });
 
-    const payload = {
-        title: "[HOTEL VOUCHER] " + firstHotelTitle,
-        destination: "Standalone Hotel Request",
-        total_price: totalAggregateValue,
-        hotel_details: payloadHotels,
-        inclusions: ["Consolidated Room Bookings Summary Only"],
-        exclusions: ["Flights or ground itinerary services excluded outside specific vouchers listings"]
-    };
-
     try {
-        const dbResult = await supabaseClient.from('itineraries').insert([payload]);
+        const dbResult = await supabaseClient.from('itineraries').insert([{
+            title: "[HOTEL VOUCHER] " + (blocks[0].querySelector('.sh-name').value || "Hotel Request"),
+            destination: "Standalone Hotel Request",
+            total_price: totalAggregateValue,
+            hotel_details: payloadHotels
+        }]);
         if (dbResult.error) throw dbResult.error;
-
         standaloneHotelSaveBtn.innerText = "✓ Voucher Synced";
         standaloneHotelSaveBtn.style.backgroundColor = "#059669";
         setTimeout(() => {
@@ -928,22 +634,20 @@ async function saveStandaloneHotelsToSupabase() {
             standaloneHotelSaveBtn.disabled = false;
         }, 2500);
     } catch (err) {
-        alert(`Cloud sync fault triggered: ${err.message}`);
+        alert(`Cloud sync fault: ${err.message}`);
         standaloneHotelSaveBtn.innerText = "Sync Vouchers";
         standaloneHotelSaveBtn.disabled = false;
     }
 }
 
+// ====== BUSINESS CORE CRM METHODS ======
 async function handleWorkspaceLogin(e) {
     if (e) e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const submitBtn = document.getElementById('login-submit-btn');
 
-    if (!email || !password) {
-        alert("Please fill out both fields.");
-        return;
-    }
+    if (!email || !password) return;
     submitBtn.innerText = "Verifying Credentials...";
     submitBtn.disabled = true;
 
@@ -963,66 +667,34 @@ async function handleWorkspaceLogin(e) {
 
 async function fetchAndRenderCustomerBase() {
     try {
-        const { data: customerData, error } = await supabaseClient
-            .from('customers')
-            .select('*')
-            .order('created_at', { ascending: false });
-
+        const { data: customerData, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-
         if(pkgCustomerSelect) {
             pkgCustomerSelect.innerHTML = '<option value="">-- Link Client Profile --</option>';
-            customerData.forEach(cust => {
-                pkgCustomerSelect.innerHTML += `<option value="${cust.id}">${cust.full_name}</option>`;
-            });
+            customerData.forEach(cust => { pkgCustomerSelect.innerHTML += `<option value="${cust.id}">${cust.full_name}</option>`; });
         }
-
         if(customerTableRows) {
             customerTableRows.innerHTML = '';
-            if(customerData.length === 0) {
-                customerTableRows.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-500 italic">No business contact profiles recorded yet.</td></tr>';
-                return;
-            }
             customerData.forEach(cust => {
-                const createdStamp = new Date(cust.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-                customerTableRows.innerHTML += `
-                    <tr class="hover:bg-white/[0.02] transition">
-                        <td class="py-3 font-medium text-white">${cust.full_name}</td>
-                        <td class="py-3 text-gray-400">${cust.email || '---'}</td>
-                        <td class="py-3 text-indigo-300 font-mono">${cust.phone || '---'}</td>
-                        <td class="py-3 text-right text-gray-500 font-mono">${createdStamp}</td>
-                    </tr>
-                `;
+                customerTableRows.innerHTML += `<tr class="hover:bg-white/[0.02] transition"><td class="py-3 font-medium text-white">${cust.full_name}</td><td class="py-3 text-gray-400">${cust.email || '---'}</td><td class="py-3 text-indigo-300 font-mono">${cust.phone || '---'}</td><td class="py-3 text-right text-gray-500 font-mono">${new Date(cust.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td></tr>`;
             });
         }
-    } catch(err) {
-        console.error("Profile pull fault triggered:", err);
-    }
+    } catch(err) { console.error(err); }
 }
 
 async function onboardNewCustomerRecord() {
     const fullName = document.getElementById('cust-name').value;
     const email = document.getElementById('cust-email').value;
     const mobile = document.getElementById('cust-mobile').value;
-
-    if(!fullName) {
-        alert("Please enter a Full Name to save a profile.");
-        return;
-    }
+    if(!fullName) return;
     addCustSubmitBtn.innerText = "Syncing Profile...";
     addCustSubmitBtn.disabled = true;
-
     try {
-        const { error } = await supabaseClient
-            .from('customers')
-            .insert([{ full_name: fullName, email: email, phone: mobile }]);
-
+        const { error } = await supabaseClient.from('customers').insert([{ full_name: fullName, email: email, phone: mobile }]);
         if (error) throw error;
-
         document.getElementById('cust-name').value = '';
         document.getElementById('cust-email').value = '';
         document.getElementById('cust-mobile').value = '';
-
         addCustSubmitBtn.innerText = "✓ Record Saved!";
         addCustSubmitBtn.style.backgroundColor = "#059669";
         await fetchAndRenderCustomerBase();
@@ -1031,11 +703,7 @@ async function onboardNewCustomerRecord() {
             addCustSubmitBtn.style.backgroundColor = "";
             addCustSubmitBtn.disabled = false;
         }, 2000);
-    } catch(err) {
-        alert(`Contact pipeline failed: ${err.message}`);
-        addCustSubmitBtn.innerText = "Commit Profile to Database";
-        addCustSubmitBtn.disabled = false;
-    }
+    } catch(err) { alert(err.message); addCustSubmitBtn.innerText = "Commit Profile to Database"; addCustSubmitBtn.disabled = false; }
 }
 
 function addFlightSectorBlock() {
@@ -1045,171 +713,36 @@ function addFlightSectorBlock() {
     flightBlock.id = `flight-block-${flightCount}`;
     
     flightBlock.innerHTML = `
-        <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Flight Sector Route ${flightCount}</span>
-            <button type="button" onclick="removeFlightSectorBlock(${flightCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
-        </div>
+        <div class="flex justify-between items-center"><span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Flight Sector Route ${flightCount}</span><button type="button" onclick="removeFlightSectorBlock(${flightCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 transition">Remove</button></div>
         <div class="grid grid-cols-2 gap-2 bg-cyan-950/20 p-2 rounded-lg border border-cyan-500/10">
-            <div>
-                <label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Net Airfare Buying Cost (INR)</label>
-                <input type="number" placeholder="e.g., 12000" class="fl-net w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()">
-            </div>
-            <div>
-                <label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Airfare Markup (%)</label>
-                <input type="number" value="0" class="fl-margin w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()">
-            </div>
+            <div><label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Net Airfare Buying Cost (INR)</label><input type="number" placeholder="e.g., 12000" class="fl-net w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()"></div>
+            <div><label class="block text-[9px] text-cyan-400 uppercase tracking-wider mb-1">Airfare Markup (%)</label><input type="number" value="0" class="fl-margin w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none" oninput="updateLivePreview()"></div>
         </div>
         <div class="space-y-3 text-xs">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Flight Number</label>
-                    <input type="text" placeholder="e.g., TG-318" class="fl-num w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
-                </div>
-                <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Route String</label>
-                    <input type="text" placeholder="e.g., MAA - BKK" class="fl-route w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
-                </div>
-                <div>
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Duration</label>
-                    <input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
-                </div>
+                <div><label class="block text-[10px] text-gray-400 uppercase mb-1">Flight Number</label><input type="text" placeholder="e.g., TG-318" class="fl-num w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()"></div>
+                <div><label class="block text-[10px] text-gray-400 uppercase mb-1">Route String</label><input type="text" placeholder="e.g., MAA - BKK" class="fl-route w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()"></div>
+                <div><label class="block text-[10px] text-gray-400 uppercase mb-1">Duration</label><input type="text" placeholder="e.g., 3h 45m" class="fl-duration w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()"></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span>
-                    <input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    <input type="text" placeholder="Time" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                </div>
-                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase">Arrival</span>
-                    <input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    <input type="text" placeholder="Time" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                </div>
+                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2"><span class="text-[10px] font-bold text-gray-400 uppercase">Departure</span><input type="date" class="fl-dep-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"><input type="text" placeholder="Time" class="fl-dep-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"></div>
+                <div class="bg-white/[0.02] p-2 rounded-lg border border-white/5 space-y-2"><span class="text-[10px] font-bold text-gray-400 uppercase">Arrival</span><input type="date" class="fl-arr-date w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"><input type="text" placeholder="Time" class="fl-arr-time w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"></div>
             </div>
-            <div class="pt-2 border-t border-white/5">
-                <label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer">
-                    <input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">
-                    Include Connection / 2nd Leg
-                </label>
-            </div>
+            <div class="pt-2 border-t border-white/5"><label class="inline-flex items-center text-[11px] text-cyan-300 cursor-pointer"><input type="checkbox" class="fl-has-leg2 mr-2 accent-cyan-600" onchange="toggleFlightLeg2(${flightCount})">Include Connection / 2nd Leg</label></div>
             <div id="flight-leg2-container-${flightCount}" class="hidden pt-3 border-t border-white/10 space-y-3 bg-cyan-950/10 p-3 rounded-xl border border-cyan-500/10">
-                <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Connecting Leg 2 Specifications</span>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div>
-                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Flight Number (Leg 2)</label>
-                        <input type="text" placeholder="e.g., TG-123" class="fl-num2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Route (Leg 2)</label>
-                        <input type="text" placeholder="e.g., BKK - HKT" class="fl-route2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
-                    </div>
-                    <div>
-                        <label class="block text-[9px] text-gray-400 uppercase mb-1">Duration (Leg 2)</label>
-                        <input type="text" placeholder="e.g., 1h 20m" class="fl-duration2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()">
-                    </div>
+                    <div><label class="block text-[9px] text-gray-400 mb-1">Flight Number (Leg 2)</label><input type="text" placeholder="e.g., TG-123" class="fl-num2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()"></div>
+                    <div><label class="block text-[9px] text-gray-400 mb-1">Route (Leg 2)</label><input type="text" placeholder="e.g., BKK - HKT" class="fl-route2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()"></div>
+                    <div><label class="block text-[9px] text-gray-400 mb-1">Duration (Leg 2)</label><input type="text" placeholder="e.g., 1h 20m" class="fl-duration2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none" oninput="updateLivePreview()"></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div class="space-y-1">
-                        <label class="block text-[9px] text-gray-400 uppercase">Departure (Leg 2)</label>
-                        <input type="date" class="fl-dep-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                        <input type="text" placeholder="Time" class="fl-dep-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="block text-[9px] text-gray-400 uppercase">Arrival (Leg 2)</label>
-                        <input type="date" class="fl-arr-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                        <input type="text" placeholder="Time" class="fl-arr-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none" oninput="updateLivePreview()">
-                    </div>
+                    <div class="space-y-1"><input type="date" class="fl-dep-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"><input type="text" placeholder="Time" class="fl-dep-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"></div>
+                    <div class="space-y-1"><input type="date" class="fl-arr-date2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"><input type="text" placeholder="Time" class="fl-arr-time2 w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white focus:outline-none" oninput="updateLivePreview()"></div>
                 </div>
             </div>
         </div>
     `;
     if(flightsContainer) flightsContainer.appendChild(flightBlock);
-    // Attach event listeners dynamically to newly injected flight block inputs for live synchronization updates
     flightBlock.querySelectorAll('input').forEach(elem => elem.addEventListener('input', updateLivePreview));
     updateLivePreview();
-}
-
-function removeFlightSectorBlock(id) {
-    document.getElementById(`flight-block-${id}`)?.remove();
-    updateLivePreview();
-}
-
-function addHotelStayBlock() {
-    hotelCount++;
-    const hotelBlock = document.createElement('div');
-    hotelBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
-    hotelBlock.id = `hotel-block-${hotelCount}`;
-    
-    hotelBlock.innerHTML = `
-        <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Property Location Slot ${hotelCount}</span>
-            <button type="button" onclick="removeHotelStayBlock(${hotelCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
-        </div>
-        <div class="space-y-3">
-            <input type="text" placeholder="Hotel Name" class="hotel-name w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
-            <div class="grid grid-cols-3 gap-1.5">
-                <div>
-                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Check-In</label>
-                    <input type="date" class="hotel-in w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
-                </div>
-                <div>
-                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Check-Out</label>
-                    <input type="date" class="hotel-out w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
-                </div>
-                <div>
-                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider mb-1">Nights</label>
-                    <input type="number" placeholder="2" class="hotel-nights w-full bg-white/5 border border-white/10 rounded-lg px-1.5 py-1.5 text-[10px] focus:outline-none text-white" oninput="updateLivePreview()">
-                </div>
-            </div>
-        </div>
-    `;
-    if(hotelsContainer) hotelsContainer.appendChild(hotelBlock);
-    hotelBlock.querySelectorAll('input').forEach(elem => elem.addEventListener('input', updateLivePreview));
-    updateLivePreview();
-}
-
-function removeHotelStayBlock(id) {
-    document.getElementById(`hotel-block-${id}`)?.remove();
-    updateLivePreview();
-}
-
-function addItineraryDay() {
-    dayCount++;
-    const dayBlock = document.createElement('div');
-    dayBlock.className = 'bg-white/5 border border-white/5 p-3 sm:p-4 rounded-xl space-y-3 relative transition-all duration-300';
-    dayBlock.id = `day-block-${dayCount}`;
-    
-    dayBlock.innerHTML = `
-        <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Day ${dayCount}</span>
-            <button type="button" onclick="removeItineraryDay(${dayCount})" class="text-xs text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition">Remove</button>
-        </div>
-        <input type="text" placeholder="Day Title: e.g., Arrival & Beachside Sunset Dinner" class="day-title-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white" oninput="updateLivePreview()">
-        <textarea placeholder="Excursion or tour details below this day..." rows="3" class="day-desc-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none text-white resize-none" oninput="updateLivePreview()"></textarea>
-    `;
-    if(daysContainer) daysContainer.appendChild(dayBlock);
-    dayBlock.querySelector('input').addEventListener('input', updateLivePreview);
-    dayBlock.querySelector('textarea').addEventListener('input', updateLivePreview);
-    updateLivePreview();
-}
-
-function removeItineraryDay(id) {
-    const element = document.getElementById('day-block-' + id);
-    if (element) {
-        element.remove();
-        reindexDays();
-        updateLivePreview();
-    }
-}
-
-function reindexDays() {
-    const blocks = daysContainer ? daysContainer.children : [];
-    dayCount = blocks.length;
-    Array.from(blocks).forEach((block, index) => {
-        const currentNum = index + 1;
-        block.id = `day-block-${currentNum}`;
-        block.querySelector('span').innerText = `Day ${currentNum}`;
-        const removeBtn = block.querySelector('button');
-        if(removeBtn) removeBtn.setAttribute('onclick', `removeItineraryDay(${currentNum})`);
-    });
 }
