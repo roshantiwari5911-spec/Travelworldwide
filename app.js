@@ -26,6 +26,10 @@ let aiFreeRawText, aiFreeGenerateBtn, aiPricingNet, aiPricingMarkupVal, aiMarkup
 let markupModePctBtn, markupModeFlatBtn, aiPricingMarginDisplay, aiPricingGrandTotal;
 let aiRefinePromptInput, aiRefineSubmitBtn, aiSaveCloudBtn, aiExportPdfBtn, aiQuotePreviewPane, aiCanvasStatus;
 
+// Per-Person & Kids Breakdown Elements
+let aiPaxAdults, aiNetPerAdult, aiPaxKids, aiNetPerKid, aiPerAdultQuoted, aiPerKidQuoted, aiKidsSummaryRow;
+let aiAirfarePerPax, aiAirfareTotal, flightPasteDropzone, flightPasteStatus;
+
 let currentAiMarkupType = 'pct'; // 'pct' | 'flat'
 let currentAiNetCost = 0;
 let currentAiMarkupVal = 15;
@@ -106,6 +110,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiQuotePreviewPane = document.getElementById('ai-quote-preview-pane');
     aiCanvasStatus = document.getElementById('ai-canvas-status');
 
+    // Per Person & Kids & Flights UI
+    aiPaxAdults = document.getElementById('ai-pax-adults');
+    aiNetPerAdult = document.getElementById('ai-net-per-adult');
+    aiPaxKids = document.getElementById('ai-pax-kids');
+    aiNetPerKid = document.getElementById('ai-net-per-kid');
+    aiPerAdultQuoted = document.getElementById('ai-per-adult-quoted');
+    aiPerKidQuoted = document.getElementById('ai-per-kid-quoted');
+    aiKidsSummaryRow = document.getElementById('ai-kids-summary-row');
+    aiAirfarePerPax = document.getElementById('ai-airfare-per-pax');
+    aiAirfareTotal = document.getElementById('ai-airfare-total');
+    flightPasteDropzone = document.getElementById('flight-paste-dropzone');
+    flightPasteStatus = document.getElementById('flight-paste-status');
+
     // Tab Listeners
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
@@ -133,8 +150,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     markupModePctBtn?.addEventListener('click', () => setAiMarkupMode('pct'));
     markupModeFlatBtn?.addEventListener('click', () => setAiMarkupMode('flat'));
+    
+    // Pricing Auto-Calculation Bindings
+    aiPaxAdults?.addEventListener('input', syncNetFromPerPax);
+    aiNetPerAdult?.addEventListener('input', syncNetFromPerPax);
+    aiPaxKids?.addEventListener('input', syncNetFromPerPax);
+    aiNetPerKid?.addEventListener('input', syncNetFromPerPax);
     aiPricingNet?.addEventListener('input', recalculateAiPricing);
     aiPricingMarkupVal?.addEventListener('input', recalculateAiPricing);
+    
+    aiAirfarePerPax?.addEventListener('input', syncAirfareTotals);
+    aiAirfareTotal?.addEventListener('input', recalculateAiPricing);
+
+    // Vision Paste Handler on dropzone
+    flightPasteDropzone?.addEventListener('paste', handleFlightScreenshotPaste);
+    window.addEventListener('paste', (e) => {
+        // Also capture paste if the user is in the AI build tab
+        if (!moduleAiBuild.classList.contains('hidden') && e.clipboardData?.files?.length > 0) {
+            handleFlightScreenshotPaste(e);
+        }
+    });
+
     aiRefinePromptInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') handleAiRefinePrompt();
     });
@@ -224,7 +260,7 @@ function switchCrmModule(m) {
 }
 
 // ==============================================================
-// AUTONOMOUS AI BUILD TAB ENGINE
+// AUTONOMOUS AI BUILD TAB ENGINE WITH PER-PERSON & KIDS COSTING
 // ==============================================================
 function setAiMarkupMode(mode) {
     currentAiMarkupType = mode;
@@ -242,50 +278,230 @@ function setAiMarkupMode(mode) {
     recalculateAiPricing();
 }
 
+function syncNetFromPerPax() {
+    const adults = parseInt(aiPaxAdults?.value) || 0;
+    const adultNet = parseFloat(aiNetPerAdult?.value) || 0;
+    const kids = parseInt(aiPaxKids?.value) || 0;
+    const kidNet = parseFloat(aiNetPerKid?.value) || 0;
+
+    const totalCalculatedNet = (adults * adultNet) + (kids * kidNet);
+    if (aiPricingNet && totalCalculatedNet > 0) {
+        aiPricingNet.value = Math.round(totalCalculatedNet);
+    }
+    recalculateAiPricing();
+}
+
+function syncAirfareTotals() {
+    const adults = parseInt(aiPaxAdults?.value) || 0;
+    const kids = parseInt(aiPaxKids?.value) || 0;
+    const totalPax = Math.max(1, adults + kids);
+    const airfarePerPax = parseFloat(aiAirfarePerPax?.value) || 0;
+    if (aiAirfareTotal) {
+        aiAirfareTotal.value = Math.round(airfarePerPax * totalPax);
+    }
+    recalculateAiPricing();
+}
+
 function recalculateAiPricing() {
     const net = parseFloat(aiPricingNet?.value) || 0;
     const markup = parseFloat(aiPricingMarkupVal?.value) || 0;
+    const airfare = parseFloat(aiAirfareTotal?.value) || 0;
+    const adults = parseInt(aiPaxAdults?.value) || 2;
+    const kids = parseInt(aiPaxKids?.value) || 0;
+    const totalPax = Math.max(1, adults + kids);
+
     currentAiNetCost = net;
     currentAiMarkupVal = markup;
 
     let margin = 0;
-    let grandTotal = net;
+    let landQuoted = net;
 
     if (currentAiMarkupType === 'pct') {
         margin = Math.round(net * (markup / 100));
-        grandTotal = Math.round(net + margin);
+        landQuoted = Math.round(net + margin);
     } else {
         margin = Math.round(markup);
-        grandTotal = Math.round(net + margin);
+        landQuoted = Math.round(net + margin);
+    }
+
+    const grandTotal = landQuoted + airfare;
+
+    // Per Adult & Per Child Breakdown
+    const adultNet = parseFloat(aiNetPerAdult?.value) || 0;
+    const kidNet = parseFloat(aiNetPerKid?.value) || 0;
+
+    let perAdultQuoted = 0;
+    let perKidQuoted = 0;
+
+    if (currentAiMarkupType === 'pct') {
+        perAdultQuoted = Math.round((adultNet + (adultNet * (markup / 100))) + (airfare / totalPax));
+        perKidQuoted = Math.round((kidNet + (kidNet * (markup / 100))) + (airfare / totalPax));
+    } else {
+        const flatPerPaxMargin = margin / totalPax;
+        perAdultQuoted = Math.round(adultNet + flatPerPaxMargin + (airfare / totalPax));
+        perKidQuoted = Math.round(kidNet + flatPerPaxMargin + (airfare / totalPax));
     }
 
     if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${margin.toLocaleString('en-IN')}`;
     if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
+    if (aiPerAdultQuoted) aiPerAdultQuoted.innerText = `₹${perAdultQuoted.toLocaleString('en-IN')}`;
 
+    if (kids > 0 && aiKidsSummaryRow && aiPerKidQuoted) {
+        aiKidsSummaryRow.classList.remove('hidden');
+        aiPerKidQuoted.innerText = `₹${perKidQuoted.toLocaleString('en-IN')}`;
+    } else if (aiKidsSummaryRow) {
+        aiKidsSummaryRow.classList.add('hidden');
+    }
+
+    // Update the live rendered canvas footer
     const priceHolder = document.getElementById('ai-rendered-grand-price');
     if (priceHolder) {
         priceHolder.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
     }
+
+    const paxBreakdownTag = document.getElementById('ai-rendered-pax-pricing-tag');
+    if (paxBreakdownTag) {
+        if (kids > 0) {
+            paxBreakdownTag.innerHTML = `(${adults} Adults @ ₹${perAdultQuoted.toLocaleString('en-IN')} | ${kids} Children @ ₹${perKidQuoted.toLocaleString('en-IN')}${airfare > 0 ? ' incl. flights' : ''})`;
+        } else {
+            paxBreakdownTag.innerHTML = `(₹${perAdultQuoted.toLocaleString('en-IN')} per adult${airfare > 0 ? ' all-inclusive with flights' : ''})`;
+        }
+    }
+}
+
+// ==============================================================
+// CLIPBOARD SCREENSHOT VISION OCR FOR FLIGHT SCHEDULES
+// ==============================================================
+async function handleFlightScreenshotPaste(e) {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    let imageFile = null;
+
+    for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+            imageFile = item.getAsFile();
+            break;
+        }
+    }
+
+    if (!imageFile) return;
+
+    e.preventDefault();
+    if (flightPasteStatus) flightPasteStatus.innerHTML = `<span class="text-cyan-400 animate-pulse">↻ Reading flight schedule screenshot via Vision AI...</span>`;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+        const base64Data = reader.result; // data:image/png;base64,...
+
+        try {
+            const prompt = `You are a flight schedule OCR extractor.
+Extract all flight route segments from this flight booking / GDS screenshot into valid JSON.
+
+SCHEMA:
+{
+  "flights": [
+    {
+      "airline": "e.g. IndiGo",
+      "flight_number": "e.g. 6E-5184",
+      "route": "e.g. Mumbai (BOM) → Bengaluru (BLR)",
+      "dep_date": "e.g. Oct 17, Sat",
+      "dep_time": "12:30",
+      "arr_date": "e.g. Oct 17, Sat",
+      "arr_time": "14:25",
+      "duration": "1h 55m",
+      "terminal_info": "e.g. Mumbai Terminal 1 → Bengaluru Terminal 1"
+    }
+  ]
+}
+
+Return ONLY raw JSON with no conversational text.`;
+
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "llama-3.2-11b-vision-preview",
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: prompt },
+                                { type: "image_url", image_url: { url: base64Data } }
+                            ]
+                        }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) {
+                const errBody = await response.text();
+                throw new Error(`Vision OCR failed: ${errBody}`);
+            }
+
+            const data = await response.json();
+            const extracted = extractJsonRobustly(data.choices[0].message.content);
+
+            if (Array.isArray(extracted.flights) && extracted.flights.length > 0) {
+                if (!currentAiData) {
+                    currentAiData = {
+                        title: "Custom Flight & Land Proposal",
+                        destination: extracted.flights[0].route || "Domestic Tour",
+                        travel_date: extracted.flights[0].dep_date || "",
+                        pax_count: parseInt(aiPaxAdults?.value) || 2,
+                        vehicle_standard: "Private Transfers Included",
+                        inclusions: ["All flight routing as mentioned", "Airport assistance"],
+                        exclusions: ["Excess baggage", "Personal meals outside flights"],
+                        hotels: [],
+                        itinerary_days: [],
+                        flights: extracted.flights
+                    };
+                } else {
+                    currentAiData.flights = extracted.flights;
+                }
+
+                if (flightPasteStatus) flightPasteStatus.innerHTML = `<span class="text-emerald-400 font-bold">✓ Extracted: ${extracted.flights.map(f => f.flight_number + ' ' + f.route).join(', ')}</span>`;
+                aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
+                recalculateAiPricing();
+            } else {
+                if (flightPasteStatus) flightPasteStatus.innerText = "No flight schedule detected in image.";
+            }
+
+        } catch (err) {
+            console.error(err);
+            if (flightPasteStatus) flightPasteStatus.innerHTML = `<span class="text-red-400">Failed to parse image: ${err.message}</span>`;
+        }
+    };
+
+    reader.readAsDataURL(imageFile);
 }
 
 function renderAiProposalDocument(data) {
     if (!data) return '';
 
-    const title = data.title || "Sri Lanka Ramayana & Scenic Discovery";
-    const dest = data.destination || "Sri Lanka";
-    const travelDate = data.travel_date || "08th May 2026";
-    const pax = data.pax_count || 4;
+    const title = data.title || "Custom Holiday Discovery";
+    const dest = data.destination || "Custom Itinerary";
+    const travelDate = data.travel_date || "Flexible Dates";
+    const pax = (parseInt(aiPaxAdults?.value) || data.pax_count || 2) + (parseInt(aiPaxKids?.value) || 0);
     const vehicle = data.vehicle_standard || "Private Dedicated Fleet";
 
     let flHtml = '';
     if (Array.isArray(data.flights) && data.flights.length > 0) {
         let fList = data.flights.map(fl => `
-            <div style="border-left: 2.5px solid #0f172a; padding-left: 12px; margin-bottom: 10px; font-size: 11.5px;">
-                <strong>✈ ${fl.route || 'Sector Routing'} (${fl.flight_number || 'TBD'})</strong><br>
-                <span style="color: #64748b;">Departure: ${fl.dep_date || ''} ${fl.dep_time || ''} | Arrival: ${fl.arr_date || ''} ${fl.arr_time || ''}</span>
+            <div style="border-left: 3px solid #0284c7; background: #f0f9ff; padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; font-size: 11.5px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>✈ ${fl.route || 'Flight Sector'}</strong>
+                    <span style="background:#0284c7; color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">${fl.flight_number || 'Confirmed'}</span>
+                </div>
+                <div style="color: #475569; margin-top: 4px;">
+                    Departs: <strong>${fl.dep_time || ''}</strong> (${fl.dep_date || ''}) &bull; Arrives: <strong>${fl.arr_time || ''}</strong> (${fl.arr_date || ''}) ${fl.duration ? `&bull; Duration: ${fl.duration}` : ''}
+                </div>
+                ${fl.terminal_info ? `<div style="font-size:10.5px; color:#64748b; margin-top:2px;">📍 ${fl.terminal_info}</div>` : ''}
             </div>
         `).join('');
-        flHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800;">I. Aviation Matrices</h3>${fList}</div>`;
+        flHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0284c7;">I. Aviation Matrices & Flight Schedule</h3>${fList}</div>`;
     }
 
     let htHtml = '';
@@ -332,7 +548,7 @@ function renderAiProposalDocument(data) {
                 <div><strong>Experience:</strong> ${title}</div>
                 <div><strong>Destination:</strong> 📍 ${dest}</div>
                 <div><strong>Dates:</strong> 📅 ${travelDate}</div>
-                <div><strong>Guests:</strong> 👥 ${pax} Adults</div>
+                <div><strong>Guests:</strong> 👥 ${pax} Travelers</div>
                 <div style="grid-column: span 2;"><strong>Ground Fleet:</strong> 🚘 ${vehicle}</div>
             </div>
 
@@ -352,7 +568,10 @@ function renderAiProposalDocument(data) {
             </div>
 
             <div style="background: #0f172a; color: #ffffff; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <div><span style="font-size: 10px; color: #94a3b8; display: block; font-weight: 600;">GRAND CLIENT INVESTMENT (ALL-INCLUSIVE)</span></div>
+                <div>
+                    <span style="font-size: 10px; color: #94a3b8; display: block; font-weight: 600;">GRAND CLIENT INVESTMENT (ALL-INCLUSIVE)</span>
+                    <span id="ai-rendered-pax-pricing-tag" style="font-size: 10.5px; color: #38bdf8; font-family: monospace;"></span>
+                </div>
                 <div style="font-size: 18px; font-weight: 800; color: #10b981; font-family: monospace;" id="ai-rendered-grand-price">₹0/-</div>
             </div>
         </div>
@@ -385,22 +604,26 @@ CRITICAL INSTRUCTIONS:
 - "title": Clean holiday package title.
 - "destination": Destination name (e.g. Sri Lanka).
 - "travel_date": Date string or "Flexible".
-- "pax_count": Total number of passengers (e.g. 4).
+- "pax_adults": Number of adults (e.g. 4).
+- "pax_kids": Number of children if mentioned (else 0).
 - "vehicle_standard": Fleet mentioned (e.g. "Private Flat Roof Van").
-- "detected_net_cost": Calculate total net cost in INR. If in USD (e.g. $428 per person for 4 pax = $1712), convert to INR multiplying by 87 (e.g. ~148944). Output plain integer.
+- "adult_net_cost_per_person": Rate per adult in INR. If in USD (e.g. $428 per person), convert to INR multiplying by 87 (e.g. ~37236).
+- "kid_net_cost_per_person": Rate per child in INR (if mentioned, else 0).
 - "inclusions": Array of included services.
 - "exclusions": Array of excluded items.
 - "hotels": Array of hotel properties [{ "hotel_name": "Tropical Life Resort", "location": "Dambulla", "meal_plan": "HB Basis", "nights": 1 }].
 - "itinerary_days": Array of every day breakdown [{ "title": "Headline", "description": "Details" }].
 
-Output format:
+Output schema:
 {
   "title": "Sri Lanka Heritage & Ramayana Discovery",
   "destination": "Sri Lanka",
   "travel_date": "08th May 2026",
-  "pax_count": 4,
+  "pax_adults": 4,
+  "pax_kids": 0,
   "vehicle_standard": "Private Flat Roof Van",
-  "detected_net_cost": 148944,
+  "adult_net_cost_per_person": 37236,
+  "kid_net_cost_per_person": 0,
   "inclusions": ["Meet and Greet", "Accommodations on HB Basis", "Private Van Transfers"],
   "exclusions": ["Airfare & Visa", "Lunch", "Monument entrance fees"],
   "flights": [],
@@ -456,10 +679,13 @@ Return ONLY a valid JSON object. Do not wrap in markdown or add explanations.`;
         const content = data.choices[0].message.content;
         currentAiData = extractJsonRobustly(content);
 
-        // Update Net Cost input if detected
-        if (currentAiData.detected_net_cost && Number(currentAiData.detected_net_cost) > 0) {
-            aiPricingNet.value = Math.round(Number(currentAiData.detected_net_cost));
-        }
+        // Populate Adult & Kid counts and per-pax rates
+        if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
+        if (currentAiData.pax_kids !== undefined) aiPaxKids.value = currentAiData.pax_kids;
+        if (currentAiData.adult_net_cost_per_person) aiNetPerAdult.value = Math.round(currentAiData.adult_net_cost_per_person);
+        if (currentAiData.kid_net_cost_per_person) aiNetPerKid.value = Math.round(currentAiData.kid_net_cost_per_person);
+
+        syncNetFromPerPax();
 
         aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
         recalculateAiPricing();
