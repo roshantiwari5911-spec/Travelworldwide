@@ -141,15 +141,13 @@ async function processDmcEmailWithAI() {
     executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
     if (aiStatusMsg) aiStatusMsg.innerText = "Extracting flights, stays, activities & rates...";
 
-    const prompt = `Extract all travel quotation details from the text below into strict, valid JSON.
-
-SCHEMA:
+    const prompt = `Extract trip info from the text into this exact JSON schema:
 {
-  "title": "Compelling holiday package title",
+  "title": "Package title",
   "destination": "Destination name",
-  "travel_date": "YYYY-MM-DD or empty string",
+  "travel_date": "YYYY-MM-DD or empty",
   "pax_count": 2,
-  "vehicle_standard": "e.g., Private AC Tempo Traveller",
+  "vehicle_standard": "Vehicle details or empty",
   "dmc_net_cost": 0,
   "airfare_estimate": 0,
   "inclusions": ["item 1", "item 2"],
@@ -176,32 +174,29 @@ SCHEMA:
   ],
   "itinerary_days": [
     {
-      "title": "Day highlights",
-      "description": "Day details"
+      "title": "Day title",
+      "description": "Day activities"
     }
   ]
 }
 
-Vendor Text:
+Text:
 """
 ${rawText}
-"""
+"""`;
 
-Return raw JSON only without markdown formatting.`;
-
-    const groqCandidateModels = [
-        "llama-3.3-70b-versatile",
+    // High throughput, low token usage models on Groq
+    const highLimitModels = [
         "llama-3.1-8b-instant",
-        "mixtral-8x7b-32768",
         "gemma2-9b-it"
     ];
 
     let success = false;
     let lastError = null;
 
-    for (const modelName of groqCandidateModels) {
+    for (const modelName of highLimitModels) {
         try {
-            if (aiStatusMsg) aiStatusMsg.innerText = `Connecting with ${modelName}...`;
+            if (aiStatusMsg) aiStatusMsg.innerText = `Processing with ${modelName}...`;
             
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -293,13 +288,13 @@ Return raw JSON only without markdown formatting.`;
             break;
 
         } catch (err) {
-            console.warn(`Model ${modelName} failed, attempting next:`, err);
+            console.warn(`Model ${modelName} failed, trying next:`, err);
             lastError = err;
         }
     }
 
     if (!success) {
-        alert("Failed to parse quotation: " + (lastError?.message || "All models busy"));
+        alert("Failed to parse quotation: " + (lastError?.message || "Rate limit reached. Please wait 10 seconds."));
     }
 
     executeAiBtn.disabled = false;
