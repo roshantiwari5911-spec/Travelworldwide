@@ -15,13 +15,23 @@ let standaloneHotelCount = 0;
 let activeItineraryId = null; 
 
 let addDayBtn, addHotelBtn, addFlightBtn, daysContainer, hotelsContainer, flightsContainer, previewPane, loginGate, crmWorkspace;
-let tabItinerary, tabCustomers, tabHotels, moduleItinerary, moduleCustomers, moduleHotels;
+let tabItinerary, tabCustomers, tabHotels, tabAiBuild;
+let moduleItinerary, moduleCustomers, moduleHotels, moduleAiBuild;
 let pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge, ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
 let standaloneHotelsList, standaloneHotelSaveBtn, standaloneHotelExportBtn, hotelVoucherPreviewPane;
 
-// AI Modal Elements
-let aiModal, openAiModalBtn, closeAiModalBtn, cancelAiBtn, executeAiBtn, aiDmcRawText, aiStatusMsg;
+// AI Freestyle Build Elements
+let aiFreeRawText, aiFreeGenerateBtn, aiPricingNet, aiPricingMarkupVal, aiMarkupLabel;
+let markupModePctBtn, markupModeFlatBtn, aiPricingMarginDisplay, aiPricingGrandTotal;
+let aiRefinePromptInput, aiRefineSubmitBtn, aiSaveCloudBtn, aiExportPdfBtn, aiQuotePreviewPane, aiCanvasStatus;
+
+let currentAiMarkupType = 'pct'; // 'pct' | 'flat'
+let currentAiNetCost = 0;
+let currentAiMarkupVal = 15;
+let currentAiTitle = "Custom Luxury Experience";
+let currentAiDestination = "Premium Destination";
+let currentGeneratedProposalHtml = "";
 
 const coreInputIds = [
     'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
@@ -35,6 +45,7 @@ function formatPremiumDate(dateStr) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Core Elements
     addDayBtn = document.getElementById('add-day-btn');
     addHotelBtn = document.getElementById('add-hotel-btn');
     addFlightBtn = document.getElementById('add-flight-btn');
@@ -45,13 +56,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     loginGate = document.getElementById('login-gate');
     crmWorkspace = document.getElementById('crm-workspace');
     
+    // Tabs & Modules
     tabItinerary = document.getElementById('tab-itinerary');
     tabCustomers = document.getElementById('tab-customers');
     tabHotels = document.getElementById('tab-hotels'); 
-    
+    tabAiBuild = document.getElementById('tab-ai-build');
+
     moduleItinerary = document.getElementById('module-itinerary');
     moduleCustomers = document.getElementById('module-customers');
     moduleHotels = document.getElementById('module-hotels'); 
+    moduleAiBuild = document.getElementById('module-ai-build');
     
     pkgCustomerSelect = document.getElementById('pkg-customer-select');
     customerTableRows = document.getElementById('customer-table-rows');
@@ -71,18 +85,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn');
     hotelVoucherPreviewPane = document.getElementById('hotel-voucher-preview-pane');
 
-    // AI Elements Initialization
-    aiModal = document.getElementById('ai-quotation-modal');
-    openAiModalBtn = document.getElementById('open-ai-modal-btn');
-    closeAiModalBtn = document.getElementById('close-ai-modal-btn');
-    cancelAiBtn = document.getElementById('cancel-ai-btn');
-    executeAiBtn = document.getElementById('execute-ai-btn');
-    aiDmcRawText = document.getElementById('ai-dmc-raw-text');
-    aiStatusMsg = document.getElementById('ai-status-msg');
+    // AI Freestyle Builder UI
+    aiFreeRawText = document.getElementById('ai-free-raw-text');
+    aiFreeGenerateBtn = document.getElementById('ai-free-generate-btn');
+    aiPricingNet = document.getElementById('ai-pricing-net');
+    aiPricingMarkupVal = document.getElementById('ai-pricing-markup-val');
+    aiMarkupLabel = document.getElementById('ai-markup-label');
+    markupModePctBtn = document.getElementById('markup-mode-pct-btn');
+    markupModeFlatBtn = document.getElementById('markup-mode-flat-btn');
+    aiPricingMarginDisplay = document.getElementById('ai-pricing-margin-display');
+    aiPricingGrandTotal = document.getElementById('ai-pricing-grand-total');
+    aiRefinePromptInput = document.getElementById('ai-refine-prompt-input');
+    aiRefineSubmitBtn = document.getElementById('ai-refine-submit-btn');
+    aiSaveCloudBtn = document.getElementById('ai-save-cloud-btn');
+    aiExportPdfBtn = document.getElementById('ai-export-pdf-btn');
+    aiQuotePreviewPane = document.getElementById('ai-quote-preview-pane');
+    aiCanvasStatus = document.getElementById('ai-canvas-status');
 
+    // Tab Listeners
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
     tabHotels?.addEventListener('click', () => switchCrmModule('hotels'));
+    tabAiBuild?.addEventListener('click', () => switchCrmModule('ai-build'));
     
     addCustSubmitBtn?.addEventListener('click', onboardNewCustomerRecord);
     logoutBtn?.addEventListener('click', executeWorkspaceSignOut);
@@ -97,11 +121,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('login-submit-btn')?.addEventListener('click', handleWorkspaceLogin);
 
-    // AI Modal Listeners
-    openAiModalBtn?.addEventListener('click', () => toggleAiModal(true));
-    closeAiModalBtn?.addEventListener('click', () => toggleAiModal(false));
-    cancelAiBtn?.addEventListener('click', () => toggleAiModal(false));
-    executeAiBtn?.addEventListener('click', processDmcEmailWithAI);
+    // AI Build Tab Event Listeners
+    aiFreeGenerateBtn?.addEventListener('click', handleAutonomousAiBuild);
+    aiRefineSubmitBtn?.addEventListener('click', handleAiRefinePrompt);
+    aiExportPdfBtn?.addEventListener('click', exportAiBuiltProposalPDF);
+    aiSaveCloudBtn?.addEventListener('click', saveAiBuiltProposalToSupabase);
+    
+    markupModePctBtn?.addEventListener('click', () => setAiMarkupMode('pct'));
+    markupModeFlatBtn?.addEventListener('click', () => setAiMarkupMode('flat'));
+    aiPricingNet?.addEventListener('input', recalculateAiPricing);
+    aiPricingMarkupVal?.addEventListener('input', recalculateAiPricing);
+    aiRefinePromptInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleAiRefinePrompt();
+    });
 
     coreInputIds.forEach(id => {
         document.getElementById(id)?.addEventListener('input', updateLivePreview);
@@ -117,223 +149,314 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkExistingAuthSession();
 });
 
-function toggleAiModal(show) {
-    if (!aiModal) return;
-    if (show) {
-        aiModal.classList.remove('hidden');
-        aiModal.classList.add('flex');
-        if (aiDmcRawText) aiDmcRawText.focus();
+// ==============================================================
+// MODULE TAB SWITCHING
+// ==============================================================
+function switchCrmModule(m) {
+    const unselected = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
+    const selected = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
+    const aiUnselected = "text-[11px] bg-gradient-to-r from-purple-600/30 to-indigo-600/30 text-purple-200 border border-purple-500/40 hover:bg-purple-600/40 font-semibold px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5";
+    const aiSelected = "text-[11px] bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-lg shadow-purple-500/25 transition flex items-center gap-1.5";
+
+    tabItinerary.className = unselected; 
+    tabCustomers.className = unselected; 
+    tabHotels.className = unselected + " border border-dashed border-indigo-500/30";
+    tabAiBuild.className = aiUnselected;
+    
+    moduleItinerary.classList.add('hidden'); 
+    moduleCustomers.classList.add('hidden'); 
+    moduleHotels.classList.add('hidden');
+    moduleAiBuild.classList.add('hidden');
+    
+    if (m === 'itinerary') { 
+        tabItinerary.className = selected; 
+        moduleItinerary.classList.remove('hidden'); 
+        if (openLedgerBtn) openLedgerBtn.style.display = 'flex'; 
+        updateLivePreview(); 
+    } else if (m === 'customers') { 
+        tabCustomers.className = selected; 
+        moduleCustomers.classList.remove('hidden'); 
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none'; 
+        toggleLedgerDrawer(false); 
+        fetchAndRenderCustomerBase(); 
+    } else if (m === 'hotels') { 
+        tabHotels.className = selected + " border border-indigo-500/50"; 
+        moduleHotels.classList.remove('hidden'); 
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none'; 
+        toggleLedgerDrawer(false); 
+        if (standaloneHotelsList?.children.length === 0) addStandaloneHotelBlock(); else updateHotelVoucherLivePreview(); 
+    } else if (m === 'ai-build') {
+        tabAiBuild.className = aiSelected;
+        moduleAiBuild.classList.remove('hidden');
+        if (openLedgerBtn) openLedgerBtn.style.display = 'none';
+        toggleLedgerDrawer(false);
+    }
+    if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+// ==============================================================
+// AUTONOMOUS AI BUILD TAB ENGINE
+// ==============================================================
+function setAiMarkupMode(mode) {
+    currentAiMarkupType = mode;
+    if (mode === 'pct') {
+        markupModePctBtn.className = "px-2.5 py-1 bg-indigo-600 text-white rounded-md transition";
+        markupModeFlatBtn.className = "px-2.5 py-1 text-slate-400 hover:text-white rounded-md transition";
+        aiMarkupLabel.innerText = "Markup Percentage (%)";
+        if (!aiPricingMarkupVal.value || aiPricingMarkupVal.value > 100) aiPricingMarkupVal.value = 15;
     } else {
-        aiModal.classList.add('hidden');
-        aiModal.classList.remove('flex');
-        if (aiStatusMsg) aiStatusMsg.innerText = '';
+        markupModeFlatBtn.className = "px-2.5 py-1 bg-indigo-600 text-white rounded-md transition";
+        markupModePctBtn.className = "px-2.5 py-1 text-slate-400 hover:text-white rounded-md transition";
+        aiMarkupLabel.innerText = "Flat Markup (₹ INR)";
+        if (!aiPricingMarkupVal.value || aiPricingMarkupVal.value <= 100) aiPricingMarkupVal.value = 5000;
+    }
+    recalculateAiPricing();
+}
+
+function recalculateAiPricing() {
+    const net = parseFloat(aiPricingNet?.value) || 0;
+    const markup = parseFloat(aiPricingMarkupVal?.value) || 0;
+    currentAiNetCost = net;
+    currentAiMarkupVal = markup;
+
+    let margin = 0;
+    let grandTotal = net;
+
+    if (currentAiMarkupType === 'pct') {
+        margin = Math.round(net * (markup / 100));
+        grandTotal = Math.round(net + margin);
+    } else {
+        margin = Math.round(markup);
+        grandTotal = Math.round(net + margin);
+    }
+
+    if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${margin.toLocaleString('en-IN')}`;
+    if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
+
+    // Dynamically update the grand price in the rendered AI preview canvas
+    const priceHolder = document.getElementById('ai-rendered-grand-price');
+    if (priceHolder) {
+        priceHolder.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
     }
 }
 
-async function getAvailableGroqModelsList() {
-    try {
-        const res = await fetch("https://api.groq.com/openai/v1/models", {
-            headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            return data.data
-                .map(m => m.id)
-                .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision") && !id.includes("orpheus") && !id.includes("canopylabs"));
-        }
-    } catch (e) {
-        console.warn("Dynamic lookup failed:", e);
-    }
-    return ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"];
-}
-
-async function processDmcEmailWithAI() {
-    const rawText = aiDmcRawText?.value?.trim();
+async function handleAutonomousAiBuild() {
+    const rawText = aiFreeRawText?.value?.trim();
     if (!rawText) {
-        alert("Please paste the DMC email or itinerary text first.");
+        alert("Please paste the vendor quotation or email text first.");
         return;
     }
 
-    executeAiBtn.disabled = true;
-    executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
-    if (aiStatusMsg) aiStatusMsg.innerText = "Querying live model availability...";
+    aiFreeGenerateBtn.disabled = true;
+    aiFreeGenerateBtn.innerHTML = `<span class="animate-spin mr-2">↻</span> Building Proposal...`;
+    if (aiCanvasStatus) aiCanvasStatus.innerText = "Generating custom layout...";
 
-    const prompt = `Extract all travel quotation details from the text below into strict, valid JSON matching this schema:
+    const prompt = `You are an elite travel luxury proposal generator for the travel brand "Travel World Wide" (salestravelworldwide@gmail.com, +91 88926 89595).
+Transform the raw DMC email / notes text into a comprehensive, luxury HTML document layout and extract metadata.
+
+Return a valid JSON object matching this schema:
 {
-  "title": "Compelling holiday package title",
+  "title": "A captivating, high-end trip title",
   "destination": "Destination name",
-  "travel_date": "YYYY-MM-DD or empty string",
-  "pax_count": 2,
-  "vehicle_standard": "e.g., Private AC Tempo Traveller",
-  "dmc_net_cost": 0,
-  "airfare_estimate": 0,
-  "inclusions": ["item 1", "item 2"],
-  "exclusions": ["item 1", "item 2"],
-  "flights": [
-    {
-      "flight_number": "string",
-      "route": "string",
-      "duration": "string",
-      "dep_date": "YYYY-MM-DD",
-      "dep_time": "HH:MM",
-      "arr_date": "YYYY-MM-DD",
-      "arr_time": "HH:MM",
-      "net_cost": 0
-    }
-  ],
-  "hotels": [
-    {
-      "hotel_name": "string",
-      "check_in": "YYYY-MM-DD",
-      "check_out": "YYYY-MM-DD",
-      "nights": 1
-    }
-  ],
-  "itinerary_days": [
-    {
-      "title": "Day highlights",
-      "description": "Day activities"
-    }
-  ]
+  "detected_net_cost": 0,
+  "proposal_html": "FULL STYLED INLINE HTML STRING (do NOT include html/body tags, just the inner styled div)"
 }
 
-Quotation Text:
+HTML DESIGN GUIDELINES for "proposal_html":
+- Use inline CSS styling on clean white background with dark typography (#111827).
+- Header with "TRAVEL WORLD WIDE" (font-weight:900), tagline "Bridging Gaps", email and phone.
+- Overview card: Trip title, Destination, Travel Dates (if found), Guests/Pax, Ground Vehicle standard.
+- Flight section (if flights exist in text) with route, flight number, timings.
+- Accommodation Table with Hotel names, room categories, check-in, check-out, duration.
+- Detailed Day-by-Day Timeline formatted with day badges (DAY 01, DAY 02) and detailed descriptions.
+- 2-Column Inclusions (with green checkmarks) and Exclusions (with red crosses).
+- Bottom Price Banner in dark navy (#0f172a) with white text, containing '<span id="ai-rendered-grand-price">CALCULATING...</span>'.
+
+Vendor Text:
 """
 ${rawText}
 """
 
-Return ONLY raw JSON without any markdown code fences.`;
+Return ONLY raw JSON without markdown formatting.`;
 
-    let candidateModels = await getAvailableGroqModelsList();
-    if (candidateModels.length === 0) {
-        candidateModels = ["llama-3.1-8b-instant", "llama3-70b-8192"];
-    }
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+                temperature: 0.1
+            })
+        });
 
-    let success = false;
-    let lastError = null;
-
-    for (const modelName of candidateModels) {
-        try {
-            if (aiStatusMsg) aiStatusMsg.innerText = `Extracting with ${modelName}...`;
-            
-            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${GROQ_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: modelName,
-                    messages: [{ role: "user", content: prompt }],
-                    response_format: { type: "json_object" },
-                    temperature: 0.1
-                })
-            });
-
-            if (!response.ok) {
-                const errTxt = await response.text();
-                throw new Error(`${response.status}: ${errTxt}`);
-            }
-
-            const data = await response.json();
-            const parsed = JSON.parse(data.choices[0].message.content);
-
-            // 1. Populate Basic Information
-            if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
-            if (parsed.destination) document.getElementById('pkg-destination').value = parsed.destination;
-            if (parsed.travel_date) document.getElementById('pkg-date').value = parsed.travel_date;
-            if (parsed.pax_count) document.getElementById('pkg-pax').value = parsed.pax_count;
-            if (parsed.vehicle_standard) document.getElementById('pkg-vehicle').value = parsed.vehicle_standard;
-            if (parsed.dmc_net_cost) document.getElementById('dmc-net-cost').value = parsed.dmc_net_cost;
-            if (parsed.airfare_estimate) document.getElementById('pkg-airfare').value = parsed.airfare_estimate;
-
-            // 2. Inclusions & Exclusions
-            if (Array.isArray(parsed.inclusions) && parsed.inclusions.length > 0) {
-                document.getElementById('pkg-inclusions').value = parsed.inclusions.join('\n');
-            }
-            if (Array.isArray(parsed.exclusions) && parsed.exclusions.length > 0) {
-                document.getElementById('pkg-exclusions').value = parsed.exclusions.join('\n');
-            }
-
-            // 3. Populate Flights
-            if (Array.isArray(parsed.flights) && parsed.flights.length > 0) {
-                flightsContainer.innerHTML = '';
-                flightCount = 0;
-                parsed.flights.forEach(fl => {
-                    addFlightSectorBlock();
-                    const b = flightsContainer.lastChild;
-                    if (fl.flight_number) b.querySelector('.fl-num').value = fl.flight_number;
-                    if (fl.route) b.querySelector('.fl-route').value = fl.route;
-                    if (fl.duration) b.querySelector('.fl-duration').value = fl.duration;
-                    if (fl.dep_date) b.querySelector('.fl-dep-date').value = fl.dep_date;
-                    if (fl.dep_time) b.querySelector('.fl-dep-time').value = fl.dep_time;
-                    if (fl.arr_date) b.querySelector('.fl-arr-date').value = fl.arr_date;
-                    if (fl.arr_time) b.querySelector('.fl-arr-time').value = fl.arr_time;
-                    if (fl.net_cost && b.querySelector('.fl-net')) b.querySelector('.fl-net').value = fl.net_cost;
-                });
-            }
-
-            // 4. Populate Hotels
-            if (Array.isArray(parsed.hotels) && parsed.hotels.length > 0) {
-                hotelsContainer.innerHTML = '';
-                hotelCount = 0;
-                parsed.hotels.forEach(ht => {
-                    addHotelStayBlock();
-                    const b = hotelsContainer.lastChild;
-                    if (ht.hotel_name) b.querySelector('.hotel-name').value = ht.hotel_name;
-                    if (ht.check_in) b.querySelector('.hotel-in').value = ht.check_in;
-                    if (ht.check_out) b.querySelector('.hotel-out').value = ht.check_out;
-                    if (ht.nights) b.querySelector('.hotel-nights').value = ht.nights;
-                });
-            }
-
-            // 5. Populate Days
-            if (Array.isArray(parsed.itinerary_days) && parsed.itinerary_days.length > 0) {
-                daysContainer.innerHTML = '';
-                dayCount = 0;
-                parsed.itinerary_days.forEach(dy => {
-                    addItineraryDay();
-                    const b = daysContainer.lastChild;
-                    if (dy.title) b.querySelector('.day-title-input').value = dy.title;
-                    if (dy.description) b.querySelector('.day-desc-input').value = dy.description;
-                });
-            }
-
-            toggleAiModal(false);
-            aiDmcRawText.value = '';
-            updateLivePreview();
-            success = true;
-            break;
-
-        } catch (err) {
-            console.warn(`Model ${modelName} encountered error, trying fallback...`, err);
-            lastError = err;
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`AI generation failed (${response.status}): ${errBody}`);
         }
-    }
 
-    if (!success) {
-        alert("Failed to parse quotation: " + (lastError?.message || "Unknown error"));
-    }
+        const data = await response.json();
+        const parsed = JSON.parse(data.choices[0].message.content);
 
-    executeAiBtn.disabled = false;
-    executeAiBtn.innerHTML = `<i data-lucide="sparkles" class="h-4 w-4"></i><span>Auto-Fill Quotation</span>`;
-    if (typeof lucide !== "undefined") lucide.createIcons();
+        currentAiTitle = parsed.title || "Luxury Holiday Proposal";
+        currentAiDestination = parsed.destination || "Custom Itinerary";
+        currentGeneratedProposalHtml = parsed.proposal_html || "<p>Quotation generated.</p>";
+
+        // Populate base cost from detection
+        if (parsed.detected_net_cost && Number(parsed.detected_net_cost) > 0) {
+            aiPricingNet.value = Math.round(Number(parsed.detected_net_cost));
+        }
+
+        // Render into preview pane
+        aiQuotePreviewPane.innerHTML = currentGeneratedProposalHtml;
+        recalculateAiPricing();
+
+        if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to build AI quotation: " + err.message);
+        if (aiCanvasStatus) aiCanvasStatus.innerText = "Error";
+    } finally {
+        aiFreeGenerateBtn.disabled = false;
+        aiFreeGenerateBtn.innerHTML = `<i data-lucide="wand-2" class="h-4 w-4"></i><span>Generate AI Quotation</span>`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    }
 }
 
-function toggleLedgerDrawer(s) { 
-    if (s) { 
-        ledgerDrawer?.classList.add('open'); 
-        fetchAndRenderItinerariesLedger(); 
-    } else { 
-        ledgerDrawer?.classList.remove('open'); 
-    } 
+async function handleAiRefinePrompt() {
+    const refineQuery = aiRefinePromptInput?.value?.trim();
+    if (!refineQuery) {
+        alert("Please enter what changes or additions you'd like made.");
+        return;
+    }
+    if (!currentGeneratedProposalHtml) {
+        alert("Please generate a proposal first before refining.");
+        return;
+    }
+
+    aiRefineSubmitBtn.disabled = true;
+    aiRefineSubmitBtn.innerHTML = `<span class="animate-spin">↻</span>`;
+    if (aiCanvasStatus) aiCanvasStatus.innerText = "Refining proposal with AI...";
+
+    const prompt = `You are modifying an existing luxury travel quotation HTML document.
+Follow the user's specific request and return the updated complete HTML and title in JSON.
+
+USER REQUEST:
+"${refineQuery}"
+
+CURRENT PROPOSAL HTML:
+"""
+${currentGeneratedProposalHtml}
+"""
+
+Return valid JSON adhering to:
+{
+  "updated_title": "string",
+  "updated_html": "FULL MODIFIED INLINE HTML STRING (ensure '<span id=\\"ai-rendered-grand-price\\">...</span>' is preserved)"
+}`;
+
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+                temperature: 0.1
+            })
+        });
+
+        if (!response.ok) throw new Error("Refinement failed: " + response.status);
+
+        const data = await response.json();
+        const parsed = JSON.parse(data.choices[0].message.content);
+
+        if (parsed.updated_title) currentAiTitle = parsed.updated_title;
+        if (parsed.updated_html) {
+            currentGeneratedProposalHtml = parsed.updated_html;
+            aiQuotePreviewPane.innerHTML = currentGeneratedProposalHtml;
+            recalculateAiPricing();
+        }
+
+        aiRefinePromptInput.value = '';
+        if (aiCanvasStatus) aiCanvasStatus.innerText = "Refinements applied";
+
+    } catch (err) {
+        console.error(err);
+        alert("Could not refine proposal: " + err.message);
+        if (aiCanvasStatus) aiCanvasStatus.innerText = "Ready";
+    } finally {
+        aiRefineSubmitBtn.disabled = false;
+        aiRefineSubmitBtn.innerHTML = `<i data-lucide="send" class="h-3.5 w-3.5"></i><span>Refine</span>`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    }
 }
 
+function exportAiBuiltProposalPDF() {
+    if (!aiQuotePreviewPane || !currentGeneratedProposalHtml) {
+        alert("No generated proposal to export.");
+        return;
+    }
+    const cleanFileName = currentAiTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+    html2pdf().set({
+        margin: [10, 10, 14, 10],
+        filename: `${cleanFileName}_Proposal.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(aiQuotePreviewPane).save();
+}
+
+async function saveAiBuiltProposalToSupabase() {
+    if (!currentGeneratedProposalHtml) {
+        alert("Generate a proposal before saving.");
+        return;
+    }
+    aiSaveCloudBtn.disabled = true;
+    aiSaveCloudBtn.innerText = "Syncing Cloud...";
+
+    const grandTotal = parseFloat(aiPricingGrandTotal?.innerText.replace(/[^0-9.]/g, '')) || 0;
+
+    try {
+        const { error } = await supabaseClient.from('itineraries').insert([{
+            title: currentAiTitle,
+            destination: currentAiDestination,
+            total_price: grandTotal,
+            dmc_net_cost: currentAiNetCost,
+            dmc_markup_pct: currentAiMarkupType === 'pct' ? currentAiMarkupVal : 0
+        }]);
+
+        if (error) throw error;
+        aiSaveCloudBtn.innerText = "✓ Saved to Cloud";
+        aiSaveCloudBtn.style.backgroundColor = "#059669";
+        setTimeout(() => {
+            aiSaveCloudBtn.innerText = "Save to Cloud";
+            aiSaveCloudBtn.style.backgroundColor = "";
+            aiSaveCloudBtn.disabled = false;
+        }, 2500);
+    } catch (err) {
+        alert("Cloud sync failed: " + err.message);
+        aiSaveCloudBtn.innerText = "Save to Cloud";
+        aiSaveCloudBtn.disabled = false;
+    }
+}
+
+// ==============================================================
+// AUTH & WORKSPACE INITIALIZATION
+// ==============================================================
 async function checkExistingAuthSession() {
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) { 
-            if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace(); 
             unlockPremiumWorkspace(); 
         }
     } catch (e) { console.warn(e); }
@@ -345,39 +468,6 @@ async function executeWorkspaceSignOut() {
     } catch (e) { console.warn(e); }
     crmWorkspace.style.opacity = "0"; 
     setTimeout(() => window.location.reload(), 500); 
-}
-
-function switchCrmModule(m) {
-    const un = "text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition";
-    const sel = "text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition";
-    
-    tabItinerary.className = un; 
-    tabCustomers.className = un; 
-    tabHotels.className = un + " border border-dashed border-indigo-500/30";
-    
-    moduleItinerary.classList.add('hidden'); 
-    moduleCustomers.classList.add('hidden'); 
-    moduleHotels.classList.add('hidden');
-    
-    if (m === 'itinerary') { 
-        tabItinerary.className = sel; 
-        moduleItinerary.classList.remove('hidden'); 
-        if (openLedgerBtn) openLedgerBtn.style.display = 'flex'; 
-        updateLivePreview(); 
-    } else if (m === 'customers') { 
-        tabCustomers.className = sel; 
-        moduleCustomers.classList.remove('hidden'); 
-        if (openLedgerBtn) openLedgerBtn.style.display = 'none'; 
-        toggleLedgerDrawer(false); 
-        fetchAndRenderCustomerBase(); 
-    } else if (m === 'hotels') { 
-        tabHotels.className = sel + " border border-indigo-500/50"; 
-        moduleHotels.classList.remove('hidden'); 
-        if (openLedgerBtn) openLedgerBtn.style.display = 'none'; 
-        toggleLedgerDrawer(false); 
-        if (standaloneHotelsList?.children.length === 0) addStandaloneHotelBlock(); else updateHotelVoucherLivePreview(); 
-    }
-    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function unlockPremiumWorkspace() {
@@ -393,6 +483,29 @@ function unlockPremiumWorkspace() {
     }, 500);
 }
 
+async function handleWorkspaceLogin(e) {
+    if (e) e.preventDefault(); 
+    const em = document.getElementById('login-email').value;
+    const pw = document.getElementById('login-password').value;
+    const btn = document.getElementById('login-submit-btn'); 
+    btn.innerText = "Verifying..."; 
+    btn.disabled = true;
+    try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: em, password: pw });
+        if (error) throw error; 
+        btn.innerText = "Access Granted"; 
+        btn.style.backgroundColor = "#10B981";
+        setTimeout(() => unlockPremiumWorkspace(), 500);
+    } catch (err) { 
+        alert(err.message); 
+        btn.innerText = "Initialize Workspace"; 
+        btn.disabled = false; 
+    }
+}
+
+// ==============================================================
+// MANUAL BUILDER & CUSTOMER DIRECTORY LOGIC
+// ==============================================================
 function resetBuilderWorkspaceForm() {
     activeItineraryId = null; 
     if (activeRecordBadge) activeRecordBadge.classList.add('hidden');
@@ -412,6 +525,15 @@ function resetBuilderWorkspaceForm() {
     addFlightSectorBlock(); addHotelStayBlock(); addItineraryDay(); calculateMarginMetrics();
 }
 
+function toggleLedgerDrawer(s) { 
+    if (s) { 
+        ledgerDrawer?.classList.add('open'); 
+        fetchAndRenderItinerariesLedger(); 
+    } else { 
+        ledgerDrawer?.classList.remove('open'); 
+    } 
+}
+
 async function fetchAndRenderItinerariesLedger() {
     try {
         const { data, error } = await supabaseClient.from('itineraries').select('id, title, destination, total_price, created_at').order('created_at', { ascending: false });
@@ -422,7 +544,7 @@ async function fetchAndRenderItinerariesLedger() {
             savedItinerariesLedger.innerHTML += `
                 <div class="relative group/card mb-2">
                     <div onclick="loadSavedItineraryIntoWorkspace('${itin.id}')" class="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/60 hover:bg-white/10 cursor-pointer transition flex flex-col gap-1 text-left">
-                        <div class="font-medium text-white pr-6 truncate">${itin.title}</div>
+                        <div class="font-medium text-white pr-6 truncate text-xs">${itin.title}</div>
                         <div class="flex justify-between items-center text-[11px] text-gray-400"><span>${itin.destination}</span><span class="font-mono text-emerald-400 font-semibold">₹${Number(itin.total_price).toLocaleString('en-IN')}</span></div>
                     </div>
                     <button onclick="event.stopPropagation(); deleteItineraryRecord('${itin.id}', '${itin.title.replace(/'/g, "\\'")}')" class="absolute top-3 right-3 p-1 text-gray-500 hover:text-red-400 transition"><i data-lucide="trash-2" class="h-3.5 w-3.5"></i></button>
@@ -440,10 +562,16 @@ async function deleteItineraryRecord(id, t) {
 async function loadSavedItineraryIntoWorkspace(id) {
     try {
         const { data: itin } = await supabaseClient.from('itineraries').select('*').eq('id', id).single();
-        if (!itin) return; activeItineraryId = itin.id; activeRecordBadge?.classList.remove('hidden');
-        document.getElementById('pkg-title').value = itin.title || ''; document.getElementById('pkg-destination').value = itin.destination || '';
-        document.getElementById('pkg-date').value = itin.start_date || ''; document.getElementById('pkg-pax').value = itin.number_of_people || '';
-        document.getElementById('pkg-vehicle').value = itin.vehicle_used || ''; if (pkgCustomerSelect) pkgCustomerSelect.value = itin.customer_id || '';
+        if (!itin) return; 
+        switchCrmModule('itinerary');
+        activeItineraryId = itin.id; 
+        activeRecordBadge?.classList.remove('hidden');
+        document.getElementById('pkg-title').value = itin.title || ''; 
+        document.getElementById('pkg-destination').value = itin.destination || '';
+        document.getElementById('pkg-date').value = itin.start_date || ''; 
+        document.getElementById('pkg-pax').value = itin.number_of_people || '';
+        document.getElementById('pkg-vehicle').value = itin.vehicle_used || ''; 
+        if (pkgCustomerSelect) pkgCustomerSelect.value = itin.customer_id || '';
         document.getElementById('pkg-inclusions').value = Array.isArray(itin.inclusions) ? itin.inclusions.join('\n') : '';
         document.getElementById('pkg-exclusions').value = Array.isArray(itin.exclusions) ? itin.exclusions.join('\n') : '';
         if (document.getElementById('dmc-net-cost')) document.getElementById('dmc-net-cost').value = itin.dmc_net_cost || '';
@@ -683,16 +811,6 @@ async function saveStandaloneHotelsToSupabase() {
         await supabaseClient.from('itineraries').insert([{ title: "[HOTEL VOUCHER] " + (blocks[0].querySelector('.sh-name').value || "Hotel Base"), destination: "Standalone Hotel Request", total_price: tot, hotel_details: hPayload }]);
         standaloneHotelSaveBtn.innerText = "✓ Voucher Synced"; standaloneHotelSaveBtn.style.backgroundColor = "#059669"; setTimeout(() => { standaloneHotelSaveBtn.innerText = "Sync Vouchers"; standaloneHotelSaveBtn.style.backgroundColor = ""; standaloneHotelSaveBtn.disabled = false; }, 2500);
     } catch (e) { alert(e.message); standaloneHotelSaveBtn.innerText = "Sync Vouchers"; standaloneHotelSaveBtn.disabled = false; }
-}
-
-async function handleWorkspaceLogin(e) {
-    if (e) e.preventDefault(); const em = document.getElementById('login-email').value, pw = document.getElementById('login-password').value;
-    const btn = document.getElementById('login-submit-btn'); btn.innerText = "Verifying..."; btn.disabled = true;
-    try {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: em, password: pw });
-        if (error) throw error; btn.innerText = "Access Granted"; btn.style.backgroundColor = "#10B981";
-        if (typeof fadeEngineForWorkspace === "function") fadeEngineForWorkspace(); setTimeout(() => unlockPremiumWorkspace(), 600);
-    } catch (err) { alert(err.message); btn.innerText = "Initialize Workspace"; btn.disabled = false; }
 }
 
 async function fetchAndRenderCustomerBase() {
