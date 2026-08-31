@@ -2,6 +2,9 @@
 const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 
+// Gemini API Key for Auto-Parsing DMC Emails
+const GEMINI_API_KEY = "AQ.Ab8RN6JhM4y-5oZMRFwC6ZF1ROnmraBgFhIxduHSnDjIUdLUAA";
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
 
@@ -16,6 +19,9 @@ let tabItinerary, tabCustomers, tabHotels, moduleItinerary, moduleCustomers, mod
 let pkgCustomerSelect, customerTableRows, addCustSubmitBtn, logoutBtn;
 let savedItinerariesLedger, clearWorkspaceBtn, activeRecordBadge, ledgerDrawer, openLedgerBtn, closeLedgerBtn; 
 let standaloneHotelsList, standaloneHotelSaveBtn, standaloneHotelExportBtn, hotelVoucherPreviewPane;
+
+// AI Modal Elements
+let aiModal, openAiModalBtn, closeAiModalBtn, cancelAiBtn, executeAiBtn, aiDmcRawText, aiStatusMsg;
 
 const coreInputIds = [
     'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
@@ -65,6 +71,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     standaloneHotelExportBtn = document.getElementById('standalone-hotel-export-btn');
     hotelVoucherPreviewPane = document.getElementById('hotel-voucher-preview-pane');
 
+    // AI Elements Initialization
+    aiModal = document.getElementById('ai-quotation-modal');
+    openAiModalBtn = document.getElementById('open-ai-modal-btn');
+    closeAiModalBtn = document.getElementById('close-ai-modal-btn');
+    cancelAiBtn = document.getElementById('cancel-ai-btn');
+    executeAiBtn = document.getElementById('execute-ai-btn');
+    aiDmcRawText = document.getElementById('ai-dmc-raw-text');
+    aiStatusMsg = document.getElementById('ai-status-msg');
+
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
     tabCustomers?.addEventListener('click', () => switchCrmModule('customers'));
     tabHotels?.addEventListener('click', () => switchCrmModule('hotels'));
@@ -82,19 +97,187 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('login-submit-btn')?.addEventListener('click', handleWorkspaceLogin);
 
+    // AI Modal Listeners
+    openAiModalBtn?.addEventListener('click', () => toggleAiModal(true));
+    closeAiModalBtn?.addEventListener('click', () => toggleAiModal(false));
+    cancelAiBtn?.addEventListener('click', () => toggleAiModal(false));
+    executeAiBtn?.addEventListener('click', processDmcEmailWithAI);
+
     coreInputIds.forEach(id => {
         document.getElementById(id)?.addEventListener('input', updateLivePreview);
     });
 
-    addDayBtn?.addEventListener('click', addItineraryDay);
-    addHotelBtn?.addEventListener('click', addHotelStayBlock);
-    addFlightBtn?.addEventListener('click', addFlightSectorBlock);
+    addDayBtn?.addEventListener('click', () => addItineraryDay());
+    addHotelBtn?.addEventListener('click', () => addHotelStayBlock());
+    addFlightBtn?.addEventListener('click', () => addFlightSectorBlock());
     
     document.getElementById('export-btn')?.addEventListener('click', generateProfessionalPDF);
     document.getElementById('save-btn')?.addEventListener('click', saveItineraryToSupabase);
 
     checkExistingAuthSession();
 });
+
+function toggleAiModal(show) {
+    if (!aiModal) return;
+    if (show) {
+        aiModal.classList.remove('hidden');
+        aiModal.classList.add('flex');
+        if (aiDmcRawText) aiDmcRawText.focus();
+    } else {
+        aiModal.classList.add('hidden');
+        aiModal.classList.remove('flex');
+        if (aiStatusMsg) aiStatusMsg.innerText = '';
+    }
+}
+
+async function processDmcEmailWithAI() {
+    const rawText = aiDmcRawText?.value?.trim();
+    if (!rawText) {
+        alert("Please paste the DMC email or itinerary text first.");
+        return;
+    }
+
+    executeAiBtn.disabled = true;
+    executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
+    if (aiStatusMsg) aiStatusMsg.innerText = "Extracting flights, stays, activities & rates...";
+
+    const prompt = `You are an expert travel quotation extraction engine. 
+Extract all trip information from this DMC/vendor email into a clean, valid JSON format matching this exact schema:
+
+{
+  "title": "string (A compelling holiday package title)",
+  "destination": "string (Destination name)",
+  "travel_date": "YYYY-MM-DD or empty string",
+  "pax_count": 2,
+  "vehicle_standard": "string (e.g., Private Sedan Transfers)",
+  "dmc_net_cost": 0,
+  "airfare_estimate": 0,
+  "inclusions": ["string", "string"],
+  "exclusions": ["string", "string"],
+  "flights": [
+    {
+      "flight_number": "string",
+      "route": "string (e.g. DEL - DXB)",
+      "duration": "string",
+      "dep_date": "YYYY-MM-DD or empty string",
+      "dep_time": "HH:MM or empty string",
+      "arr_date": "YYYY-MM-DD or empty string",
+      "arr_time": "HH:MM or empty string",
+      "net_cost": 0
+    }
+  ],
+  "hotels": [
+    {
+      "hotel_name": "string",
+      "check_in": "YYYY-MM-DD or empty string",
+      "check_out": "YYYY-MM-DD or empty string",
+      "nights": 1
+    }
+  ],
+  "itinerary_days": [
+    {
+      "title": "string",
+      "description": "string"
+    }
+  ]
+}
+
+Email content:
+"""
+${rawText}
+"""
+
+Return ONLY raw JSON, with no markdown code blocks.`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            })
+        });
+
+        if (!response.ok) throw new Error("AI request failed with status: " + response.status);
+
+        const data = await response.json();
+        const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+
+        // 1. Populate Basic Information
+        if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
+        if (parsed.destination) document.getElementById('pkg-destination').value = parsed.destination;
+        if (parsed.travel_date) document.getElementById('pkg-date').value = parsed.travel_date;
+        if (parsed.pax_count) document.getElementById('pkg-pax').value = parsed.pax_count;
+        if (parsed.vehicle_standard) document.getElementById('pkg-vehicle').value = parsed.vehicle_standard;
+        if (parsed.dmc_net_cost) document.getElementById('dmc-net-cost').value = parsed.dmc_net_cost;
+        if (parsed.airfare_estimate) document.getElementById('pkg-airfare').value = parsed.airfare_estimate;
+
+        // 2. Inclusions & Exclusions
+        if (Array.isArray(parsed.inclusions) && parsed.inclusions.length > 0) {
+            document.getElementById('pkg-inclusions').value = parsed.inclusions.join('\n');
+        }
+        if (Array.isArray(parsed.exclusions) && parsed.exclusions.length > 0) {
+            document.getElementById('pkg-exclusions').value = parsed.exclusions.join('\n');
+        }
+
+        // 3. Populate Flights
+        if (Array.isArray(parsed.flights) && parsed.flights.length > 0) {
+            flightsContainer.innerHTML = '';
+            flightCount = 0;
+            parsed.flights.forEach(fl => {
+                addFlightSectorBlock();
+                const b = flightsContainer.lastChild;
+                if (fl.flight_number) b.querySelector('.fl-num').value = fl.flight_number;
+                if (fl.route) b.querySelector('.fl-route').value = fl.route;
+                if (fl.duration) b.querySelector('.fl-duration').value = fl.duration;
+                if (fl.dep_date) b.querySelector('.fl-dep-date').value = fl.dep_date;
+                if (fl.dep_time) b.querySelector('.fl-dep-time').value = fl.dep_time;
+                if (fl.arr_date) b.querySelector('.fl-arr-date').value = fl.arr_date;
+                if (fl.arr_time) b.querySelector('.fl-arr-time').value = fl.arr_time;
+                if (fl.net_cost && b.querySelector('.fl-net')) b.querySelector('.fl-net').value = fl.net_cost;
+            });
+        }
+
+        // 4. Populate Hotels
+        if (Array.isArray(parsed.hotels) && parsed.hotels.length > 0) {
+            hotelsContainer.innerHTML = '';
+            hotelCount = 0;
+            parsed.hotels.forEach(ht => {
+                addHotelStayBlock();
+                const b = hotelsContainer.lastChild;
+                if (ht.hotel_name) b.querySelector('.hotel-name').value = ht.hotel_name;
+                if (ht.check_in) b.querySelector('.hotel-in').value = ht.check_in;
+                if (ht.check_out) b.querySelector('.hotel-out').value = ht.check_out;
+                if (ht.nights) b.querySelector('.hotel-nights').value = ht.nights;
+            });
+        }
+
+        // 5. Populate Days
+        if (Array.isArray(parsed.itinerary_days) && parsed.itinerary_days.length > 0) {
+            daysContainer.innerHTML = '';
+            dayCount = 0;
+            parsed.itinerary_days.forEach(dy => {
+                addItineraryDay();
+                const b = daysContainer.lastChild;
+                if (dy.title) b.querySelector('.day-title-input').value = dy.title;
+                if (dy.description) b.querySelector('.day-desc-input').value = dy.description;
+            });
+        }
+
+        toggleAiModal(false);
+        aiDmcRawText.value = '';
+        updateLivePreview();
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to parse quotation: " + err.message);
+    } finally {
+        executeAiBtn.disabled = false;
+        executeAiBtn.innerHTML = `<i data-lucide="sparkles" class="h-4 w-4"></i><span>Auto-Fill Quotation</span>`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    }
+}
 
 function toggleLedgerDrawer(s) { 
     if (s) { 
@@ -341,6 +524,39 @@ function generateProfessionalPDF() {
     html2pdf().set({ margin:[10,10,14,10], filename:`${t.replace(/\s+/g,'_')}_Proposal.pdf`, image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2,useCORS:true}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'} }).from(previewPane).save();
 }
 
+function addItineraryDay() {
+    dayCount++;
+    const b = document.createElement('div');
+    b.className = 'bg-white/5 border border-white/5 p-4 rounded-xl space-y-3 relative';
+    b.id = `day-block-${dayCount}`;
+    b.innerHTML = `
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-indigo-300 day-label">Day 0${dayCount}</span>
+            <button type="button" onclick="removeItineraryDay(${dayCount})" class="text-xs text-red-400 hover:text-red-300 transition">Remove</button>
+        </div>
+        <input type="text" placeholder="Title / Highlights (e.g. Arrival & Marina Dhow Cruise)" class="day-title-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none" oninput="updateLivePreview()">
+        <textarea rows="3" placeholder="Day activities and schedule details..." class="day-desc-input w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none resize-none" oninput="updateLivePreview()"></textarea>
+    `;
+    daysContainer.appendChild(b);
+    updateLivePreview();
+}
+
+function removeItineraryDay(id) {
+    document.getElementById(`day-block-${id}`)?.remove();
+    reindexItineraryDays();
+    updateLivePreview();
+}
+
+function reindexItineraryDays() {
+    Array.from(daysContainer?.children || []).forEach((b, i) => {
+        const n = i + 1;
+        b.id = `day-block-${n}`;
+        b.querySelector('.day-label').innerText = `Day 0${n}`;
+        b.querySelector('button').setAttribute('onclick', `removeItineraryDay(${n})`);
+    });
+    dayCount = daysContainer?.children.length || 0;
+}
+
 function addStandaloneHotelBlock() {
     standaloneHotelCount++; const b = document.createElement('div'); b.className = 'bg-white/5 border border-white/5 p-4 sm:p-5 rounded-2xl space-y-4 relative transition shadow-xl'; b.id = `standalone-hotel-block-${standaloneHotelCount}`;
     b.innerHTML = `
@@ -477,6 +693,11 @@ function addFlightSectorBlock() {
     flightsContainer.appendChild(b); b.querySelectorAll('input').forEach(e => e.addEventListener('input', updateLivePreview)); updateLivePreview();
 }
 
+function removeFlightSectorBlock(id) {
+    document.getElementById(`flight-block-${id}`)?.remove();
+    updateLivePreview();
+}
+
 function addHotelStayBlock() {
     hotelCount++; const b = document.createElement('div'); b.className = 'bg-white/5 border border-white/5 p-3 rounded-xl space-y-3'; b.id = `hotel-block-${hotelCount}`;
     b.innerHTML = `
@@ -488,6 +709,11 @@ function addHotelStayBlock() {
             <input type="number" placeholder="Nights" class="hotel-nights w-full bg-white/5 rounded-lg px-1.5 py-1.5" oninput="updateLivePreview()">
         </div>`;
     hotelsContainer.appendChild(b); b.querySelectorAll('input').forEach(e => e.addEventListener('input', updateLivePreview)); updateLivePreview();
+}
+
+function removeHotelStayBlock(id) {
+    document.getElementById(`hotel-block-${id}`)?.remove();
+    updateLivePreview();
 }
 
 async function saveItineraryToSupabase() {
