@@ -90,11 +90,11 @@
 
             <!-- NAVIGATION TABS -->
             <nav class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 p-1 rounded-xl">
-                <button id="tab-itinerary" class="text-[11px] bg-white text-black font-semibold px-3 py-1.5 rounded-lg shadow transition">Quotation Builder</button>
+                <button id="tab-itinerary" class="text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition">Quotation Builder</button>
                 <button id="tab-customers" class="text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition">Customer Directory</button>
                 <button id="tab-hotels" class="text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition border border-dashed border-indigo-500/30">Hotel Voucher Builder</button>
-                <button id="tab-ai-build" class="text-[11px] bg-gradient-to-r from-purple-600/30 to-indigo-600/30 text-purple-200 border border-purple-500/40 hover:bg-purple-600/40 font-semibold px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                    <i data-lucide="sparkles" class="h-3.5 w-3.5 text-purple-400"></i>
+                <button id="tab-ai-build" class="text-[11px] bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-lg shadow-purple-500/25 transition flex items-center gap-1.5">
+                    <i data-lucide="sparkles" class="h-3.5 w-3.5 text-yellow-300"></i>
                     <span>AI Build</span>
                 </button>
             </nav>
@@ -132,10 +132,8 @@
         <!-- ============================================================== -->
         <!-- MODULE 1: MANUAL ITINERARY BUILDER                             -->
         <!-- ============================================================== -->
-        <div id="module-itinerary" class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
-            <!-- Left Form Pane -->
+        <div id="module-itinerary" class="hidden flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
             <div class="lg:col-span-6 space-y-6">
-                <!-- Package Meta Block -->
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-2">
@@ -152,7 +150,6 @@
                     </div>
                 </div>
 
-                <!-- Commercials & Margins Block -->
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
                         <i data-lucide="calculator" class="h-4 w-4"></i> Costing & Pricing
@@ -182,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- Flight Sectors -->
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Flight Routing</h3>
@@ -191,7 +187,6 @@
                     <div id="flights-container" class="space-y-3"></div>
                 </div>
 
-                <!-- Accommodations -->
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Accommodations</h3>
@@ -200,7 +195,6 @@
                     <div id="hotels-container" class="space-y-3"></div>
                 </div>
 
-                <!-- Itinerary Timeline -->
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400">Day Timeline</h3>
@@ -209,27 +203,20 @@
                     <div id="days-container" class="space-y-3"></div>
                 </div>
 
-                <!-- Inclusions / Exclusions -->
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Terms & Details</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <textarea id="pkg-inclusions" rows="4" placeholder="Inclusions (one per line)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none"></textarea>
-                        <textarea id="pkg-exclusions" rows="4" placeholder="Exclusions (one per line)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none"></textarea>
+                        <textarea id="pkg-inclusions" rows="4" placeholder="Inclusions" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none"></textarea>
+                        <textarea id="pkg-exclusions" rows="4" placeholder="Exclusions" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none"></textarea>
                     </div>
                 </div>
 
-                <!-- Action Controls -->
                 <div class="flex gap-3">
-                    <button id="save-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-xl transition text-xs border border-slate-700 flex items-center justify-center gap-2">
-                        <i data-lucide="cloud" class="h-4 w-4"></i> Save to CRM Cloud
-                    </button>
-                    <button id="export-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition text-xs shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
-                        <i data-lucide="file-down" class="h-4 w-4"></i> Export Client PDF
-                    </button>
+                    <button id="save-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-xl transition text-xs border border-slate-700">Save to CRM Cloud</button>
+                    <button id="export-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition text-xs shadow-lg shadow-indigo-600/20">Export Client PDF</button>
                 </div>
             </div>
 
-            <!-- Right Preview Pane -->
             <div class="lg:col-span-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col">
                 <div class="text-xs font-semibold text-slate-400 mb-3 flex items-center justify-between">
                     <span>LIVE PROPOSAL PREVIEW</span>
@@ -286,7 +273,7 @@
                 </div>
                 <div class="flex gap-3">
                     <button id="standalone-hotel-save-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-xl transition text-xs border border-slate-700">Sync Vouchers</button>
-                    <button id="standalone-hotel-export-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition text-xs font-semibold shadow-lg shadow-emerald-600/20">Print / Export Voucher</button>
+                    <button id="standalone-hotel-export-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition text-xs shadow-lg shadow-emerald-600/20">Print / Export Voucher</button>
                 </div>
             </div>
             <div class="lg:col-span-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col">
@@ -296,9 +283,9 @@
         </div>
 
         <!-- ============================================================== -->
-        <!-- MODULE 4: AUTONOMOUS AI BUILD (FREESTYLE + REFINEMENT PROMPTS) -->
+        <!-- MODULE 4: AUTONOMOUS AI BUILD (WITH PER-PERSON & VISION FLIGHTS)-->
         <!-- ============================================================== -->
-        <div id="module-ai-build" class="hidden flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
+        <div id="module-ai-build" class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
             
             <!-- Left AI Controls Pane -->
             <div class="lg:col-span-5 space-y-5">
@@ -309,9 +296,9 @@
                         <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
                             <i data-lucide="sparkles" class="h-4 w-4 text-purple-400"></i> Paste Vendor / DMC Text
                         </h3>
-                        <span class="text-[10px] text-slate-500 font-mono">Format Agnostic</span>
+                        <span class="text-[10px] text-slate-500 font-mono">Any Text / USD / INR</span>
                     </div>
-                    <textarea id="ai-free-raw-text" rows="7" placeholder="Paste ANY quotation email, WhatsApp quote, hotel list, or messy flight notes here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 transition font-mono"></textarea>
+                    <textarea id="ai-free-raw-text" rows="6" placeholder="Paste ANY quotation email, WhatsApp quote, hotel list, or itinerary notes here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 transition font-mono"></textarea>
                     
                     <button type="button" id="ai-free-generate-btn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold py-3 rounded-xl shadow-lg shadow-purple-600/25 transition flex items-center justify-center gap-2">
                         <i data-lucide="wand-2" class="h-4 w-4"></i>
@@ -319,50 +306,107 @@
                     </button>
                 </div>
 
-                <!-- 2. Commercials & Markup Controls -->
+                <!-- 2. FLIGHT SCREENSHOT PASTE BOX (CMD+V / CTRL+V VISION OCR) -->
+                <div class="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                            <i data-lucide="plane-takeoff" class="h-4 w-4"></i> Screenshot Flight Schedule
+                        </h3>
+                        <span class="text-[10px] text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded font-mono">Direct Paste (⌘ + V)</span>
+                    </div>
+                    
+                    <div id="flight-paste-dropzone" tabindex="0" class="border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 bg-slate-950/80 rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <div class="p-2 bg-cyan-500/10 rounded-full text-cyan-400">
+                            <i data-lucide="image-plus" class="h-5 w-5"></i>
+                        </div>
+                        <p class="text-xs text-slate-300 font-semibold">Click here & press <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-cyan-300 font-mono">⌘ + V</kbd> to paste flight screenshot</p>
+                        <span id="flight-paste-status" class="text-[10px] text-slate-500">Supports Tripjack, Indigo, MakeMyTrip screenshots</span>
+                    </div>
+
+                    <!-- Flight Airfare Controls -->
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-1">Airfare (Per Person ₹)</span>
+                            <input type="number" id="ai-airfare-per-pax" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-1">Total Airfare (All Pax ₹)</span>
+                            <input type="number" id="ai-airfare-total" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-cyan-400 font-mono font-bold">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. DETAILED PER-PERSON & KIDS COMMERCIAL MARKUP CONTROLS -->
                 <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                            <i data-lucide="badge-percent" class="h-4 w-4"></i> Commercial Markup Controls
+                            <i data-lucide="badge-percent" class="h-4 w-4"></i> Costing & Pax Breakdown
                         </h3>
-                        <!-- Markup Mode Selector -->
                         <div class="flex bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-[11px] font-semibold">
                             <button type="button" id="markup-mode-pct-btn" class="px-2.5 py-1 bg-indigo-600 text-white rounded-md transition">% Margin</button>
                             <button type="button" id="markup-mode-flat-btn" class="px-2.5 py-1 text-slate-400 hover:text-white rounded-md transition">₹ Flat INR</button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 text-xs">
+                    <!-- Adult & Kids Controls -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                         <div>
-                            <span class="text-[10px] text-slate-400 block mb-1">DMC / Base Net (₹)</span>
-                            <input type="number" id="ai-pricing-net" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-medium">
+                            <span class="text-[10px] text-slate-400 block mb-1">Adults (Pax)</span>
+                            <input type="number" id="ai-pax-adults" value="2" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
                         </div>
                         <div>
-                            <span id="ai-markup-label" class="text-[10px] text-slate-400 block mb-1">Markup Percentage (%)</span>
-                            <input type="number" id="ai-pricing-markup-val" value="15" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-indigo-300 font-mono font-medium">
+                            <span class="text-[10px] text-slate-400 block mb-1">Adult Net (₹ / Pax)</span>
+                            <input type="number" id="ai-net-per-adult" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-1">Children (Kids)</span>
+                            <input type="number" id="ai-pax-kids" value="0" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-1">Kid Net (₹ / Kid)</span>
+                            <input type="number" id="ai-net-per-kid" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
                         </div>
                     </div>
 
-                    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex justify-between items-center text-xs font-mono">
+                    <div class="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                            <span class="text-[10px] text-slate-500 block uppercase">Calculated Profit</span>
-                            <strong id="ai-pricing-margin-display" class="text-emerald-400 text-sm">₹0</strong>
+                            <span class="text-[10px] text-slate-400 block mb-1">Combined Net Total (₹)</span>
+                            <input type="number" id="ai-pricing-net" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold">
                         </div>
-                        <div class="text-right">
-                            <span class="text-[10px] text-slate-500 block uppercase">Client Investment (Quoted)</span>
-                            <strong id="ai-pricing-grand-total" class="text-white text-base font-bold">₹0</strong>
+                        <div>
+                            <span id="ai-markup-label" class="text-[10px] text-slate-400 block mb-1">Markup Percentage (%)</span>
+                            <input type="number" id="ai-pricing-markup-val" value="15" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-indigo-300 font-mono font-bold">
+                        </div>
+                    </div>
+
+                    <!-- Live Breakdown Summary Card -->
+                    <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span>Quoted Per Adult:</span>
+                            <strong id="ai-per-adult-quoted" class="text-indigo-300">₹0</strong>
+                        </div>
+                        <div id="ai-kids-summary-row" class="hidden flex justify-between items-center text-slate-400">
+                            <span>Quoted Per Child:</span>
+                            <strong id="ai-per-kid-quoted" class="text-amber-300">₹0</strong>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-800">
+                            <span class="text-slate-300">Total Profit / Margin:</span>
+                            <strong id="ai-pricing-margin-display" class="text-emerald-400">₹0</strong>
+                        </div>
+                        <div class="flex justify-between items-center pt-1">
+                            <span class="text-white font-bold">Grand Investment (Quoted):</span>
+                            <strong id="ai-pricing-grand-total" class="text-emerald-400 text-base font-black">₹0/-</strong>
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. AI Interactive Refinement Prompt Box -->
+                <!-- 4. Interactive Refinement Prompt Box -->
                 <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
                         <i data-lucide="message-square-code" class="h-4 w-4"></i> Prompt Changes / Customization
                     </h3>
-                    <p class="text-[11px] text-slate-400">Ask the AI to change any part of the quotation, adjust day schedules, change hotels, or rewrite tone.</p>
                     <div class="flex gap-2">
-                        <input type="text" id="ai-refine-prompt-input" placeholder="e.g. Add Scuba diving on Day 2 & make exclusions list shorter..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                        <input type="text" id="ai-refine-prompt-input" placeholder="e.g. Add Sigiriya entry fees to inclusions, make tone luxury..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
                         <button type="button" id="ai-refine-submit-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-cyan-600/20">
                             <i data-lucide="send" class="h-3.5 w-3.5"></i>
                             <span>Refine</span>
@@ -370,7 +414,7 @@
                     </div>
                 </div>
 
-                <!-- 4. Save & Export Actions -->
+                <!-- 5. Save & Export Actions -->
                 <div class="flex gap-3">
                     <button type="button" id="ai-save-cloud-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 rounded-xl transition text-xs border border-slate-700 flex items-center justify-center gap-2">
                         <i data-lucide="cloud" class="h-4 w-4"></i> Save to Cloud
@@ -390,13 +434,13 @@
                     </span>
                     <span id="ai-canvas-status" class="text-[11px] text-indigo-400 font-mono">Ready</span>
                 </div>
-                <div id="ai-quote-preview-pane" class="bg-white rounded-xl shadow-2xl overflow-y-auto flex-1 p-0 min-h-[600px]">
+                <div id="ai-quote-preview-pane" class="bg-white rounded-xl shadow-2xl overflow-y-auto flex-1 p-0 min-h-[650px]">
                     <div class="h-full flex flex-col items-center justify-center text-slate-400 p-12 text-center space-y-3">
                         <div class="p-4 bg-slate-100 rounded-2xl text-slate-400">
                             <i data-lucide="sparkles" class="h-8 w-8"></i>
                         </div>
                         <h4 class="text-slate-800 font-bold text-sm">No AI Quotation Built Yet</h4>
-                        <p class="text-xs max-w-sm text-slate-500">Paste any DMC quote on the left and click <strong>Generate AI Quotation</strong>. The formatted proposal with live pricing will appear here.</p>
+                        <p class="text-xs max-w-sm text-slate-500">Paste any DMC quote, screenshot your flights, and hit <strong>Generate AI Quotation</strong> to create a ready-to-export proposal.</p>
                     </div>
                 </div>
             </div>
