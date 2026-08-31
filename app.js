@@ -195,11 +195,16 @@ Return ONLY raw JSON, with no markdown code blocks.`;
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "HTTP-Referer": window.location.origin,
+                "HTTP-Referer": window.location.origin || "https://travelworldwide.com",
                 "X-Title": "Travel World Wide CRM"
             },
             body: JSON.stringify({
-                model: "meta-llama/llama-3.3-70b-instruct:free",
+                models: [
+                    "google/gemini-2.0-flash-lite-001",
+                    "meta-llama/llama-3.1-8b-instruct:free",
+                    "mistralai/mistral-7b-instruct:free",
+                    "openrouter/auto"
+                ],
                 messages: [{ role: "user", content: prompt }]
             })
         });
@@ -209,11 +214,9 @@ Return ONLY raw JSON, with no markdown code blocks.`;
         const data = await response.json();
         let content = data.choices[0].message.content.trim();
 
-        if (content.startsWith("```json")) content = content.slice(7);
-        if (content.startsWith("```")) content = content.slice(3);
-        if (content.endsWith("```")) content = content.slice(0, -3);
+        content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 
-        const parsed = JSON.parse(content.trim());
+        const parsed = JSON.parse(content);
 
         // 1. Populate Basic Information
         if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
