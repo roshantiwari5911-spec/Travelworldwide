@@ -162,11 +162,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiAirfarePerPax?.addEventListener('input', syncAirfareTotals);
     aiAirfareTotal?.addEventListener('input', recalculateAiPricing);
 
-    // Vision Paste Handler on dropzone
+    // Vision Paste Handler on dropzone & global paste
     flightPasteDropzone?.addEventListener('paste', handleFlightScreenshotPaste);
     window.addEventListener('paste', (e) => {
-        // Also capture paste if the user is in the AI build tab
-        if (!moduleAiBuild.classList.contains('hidden') && e.clipboardData?.files?.length > 0) {
+        if (!moduleAiBuild?.classList.contains('hidden') && e.clipboardData?.files?.length > 0) {
             handleFlightScreenshotPaste(e);
         }
     });
@@ -190,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ==============================================================
-// DYNAMIC GROQ MODEL SELECTOR
+// DYNAMIC GROQ MODEL SELECTORS
 // ==============================================================
 async function getLiveWorkingGroqModel() {
     try {
@@ -209,9 +208,30 @@ async function getLiveWorkingGroqModel() {
             }
         }
     } catch (e) {
-        console.warn("Live model query failed:", e);
+        console.warn("Live text model query failed:", e);
     }
     return "llama-3.1-8b-instant";
+}
+
+async function getLiveGroqVisionModel() {
+    try {
+        const res = await fetch("https://api.groq.com/openai/v1/models", {
+            headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const visionModels = data.data
+                .map(m => m.id)
+                .filter(id => id.includes("vision") && !id.includes("guard"));
+            
+            if (visionModels.length > 0) {
+                return visionModels[0];
+            }
+        }
+    } catch (e) {
+        console.warn("Vision model query failed:", e);
+    }
+    return "llama-3.2-90b-vision-preview";
 }
 
 // ==============================================================
@@ -390,9 +410,10 @@ async function handleFlightScreenshotPaste(e) {
 
     const reader = new FileReader();
     reader.onload = async () => {
-        const base64Data = reader.result; // data:image/png;base64,...
+        const base64Data = reader.result;
 
         try {
+            const liveVisionModel = await getLiveGroqVisionModel();
             const prompt = `You are a flight schedule OCR extractor.
 Extract all flight route segments from this flight booking / GDS screenshot into valid JSON.
 
@@ -422,7 +443,7 @@ Return ONLY raw JSON with no conversational text.`;
                     "Authorization": `Bearer ${GROQ_API_KEY}`
                 },
                 body: JSON.stringify({
-                    model: "llama-3.2-11b-vision-preview",
+                    model: liveVisionModel,
                     messages: [
                         {
                             role: "user",
@@ -438,7 +459,7 @@ Return ONLY raw JSON with no conversational text.`;
 
             if (!response.ok) {
                 const errBody = await response.text();
-                throw new Error(`Vision OCR failed: ${errBody}`);
+                throw new Error(`Vision OCR failed (${response.status}): ${errBody}`);
             }
 
             const data = await response.json();
