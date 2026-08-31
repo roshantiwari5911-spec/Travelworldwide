@@ -29,6 +29,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- html2pdf.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Tesseract.js for 100% Free, Permanent Client-Side Flight OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         .hidden-workspace { display: none !important; }
         .ledger-drawer {
@@ -283,7 +285,7 @@
         </div>
 
         <!-- ============================================================== -->
-        <!-- MODULE 4: AUTONOMOUS AI BUILD (WITH PER-PERSON & VISION FLIGHTS)-->
+        <!-- MODULE 4: AUTONOMOUS AI BUILD (WITH OCR VISION & PER-PAX)      -->
         <!-- ============================================================== -->
         <div id="module-ai-build" class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
             
@@ -306,7 +308,7 @@
                     </button>
                 </div>
 
-                <!-- 2. FLIGHT SCREENSHOT PASTE BOX (CMD+V / CTRL+V VISION OCR) -->
+                <!-- 2. FLIGHT SCREENSHOT PASTE BOX (CMD+V OCR) -->
                 <div class="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-5 space-y-3">
                     <div class="flex items-center justify-between">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
@@ -320,7 +322,7 @@
                             <i data-lucide="image-plus" class="h-5 w-5"></i>
                         </div>
                         <p class="text-xs text-slate-300 font-semibold">Click here & press <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-cyan-300 font-mono">⌘ + V</kbd> to paste flight screenshot</p>
-                        <span id="flight-paste-status" class="text-[10px] text-slate-500">Supports Tripjack, Indigo, MakeMyTrip screenshots</span>
+                        <span id="flight-paste-status" class="text-[10px] text-slate-500">Instant in-browser OCR reading</span>
                     </div>
 
                     <!-- Flight Airfare Controls -->
