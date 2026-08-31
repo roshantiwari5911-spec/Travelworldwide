@@ -130,6 +130,28 @@ function toggleAiModal(show) {
     }
 }
 
+async function getAvailableGroqModel() {
+    try {
+        const res = await fetch("https://api.groq.com/openai/v1/models", {
+            headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const textModels = data.data
+                .map(m => m.id)
+                .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision"));
+            
+            // Prefer 70b or 8b llama / mixtral models
+            const preferred = textModels.find(id => id.includes("70b") || id.includes("8b") || id.includes("llama3") || id.includes("mixtral"));
+            if (preferred) return preferred;
+            if (textModels.length > 0) return textModels[0];
+        }
+    } catch (e) {
+        console.warn("Could not fetch models dynamically:", e);
+    }
+    return "llama3-8b-8192";
+}
+
 async function processDmcEmailWithAI() {
     const rawText = aiDmcRawText?.value?.trim();
     if (!rawText) {
@@ -139,7 +161,7 @@ async function processDmcEmailWithAI() {
 
     executeAiBtn.disabled = true;
     executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
-    if (aiStatusMsg) aiStatusMsg.innerText = "Extracting flights, stays, activities & rates...";
+    if (aiStatusMsg) aiStatusMsg.innerText = "Detecting available model & extracting data...";
 
     const prompt = `Extract all travel quotation details from the text below into strict, valid JSON.
 
@@ -190,6 +212,9 @@ ${rawText}
 Return raw JSON only without markdown formatting.`;
 
     try {
+        const selectedModel = await getAvailableGroqModel();
+        if (aiStatusMsg) aiStatusMsg.innerText = `Parsing with ${selectedModel}...`;
+
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -197,7 +222,7 @@ Return raw JSON only without markdown formatting.`;
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
+                model: selectedModel,
                 messages: [{ role: "user", content: prompt }],
                 response_format: { type: "json_object" },
                 temperature: 0.2
