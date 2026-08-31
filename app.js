@@ -29,9 +29,7 @@ let aiRefinePromptInput, aiRefineSubmitBtn, aiSaveCloudBtn, aiExportPdfBtn, aiQu
 let currentAiMarkupType = 'pct'; // 'pct' | 'flat'
 let currentAiNetCost = 0;
 let currentAiMarkupVal = 15;
-let currentAiTitle = "Custom Luxury Experience";
-let currentAiDestination = "Premium Destination";
-let currentGeneratedProposalHtml = "";
+let currentAiData = null;
 
 const coreInputIds = [
     'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
@@ -40,8 +38,14 @@ const coreInputIds = [
 ];
 
 function formatPremiumDate(dateStr) {
-    if (!dateStr || dateStr === "---") return "---";
-    return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (!dateStr || dateStr === "---" || dateStr === "") return "---";
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+        return dateStr;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -164,7 +168,7 @@ async function getLiveWorkingGroqModel() {
                 .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision") && !id.includes("orpheus") && !id.includes("canopylabs"));
             
             if (valid.length > 0) {
-                const preferred = valid.find(id => id.includes("llama-3.1") || id.includes("llama3") || id.includes("mixtral"));
+                const preferred = valid.find(id => id.includes("llama-3.1-8b") || id.includes("llama3") || id.includes("mixtral"));
                 return preferred || valid[0];
             }
         }
@@ -264,6 +268,97 @@ function recalculateAiPricing() {
     }
 }
 
+function renderAiProposalDocument(data) {
+    if (!data) return;
+
+    const title = data.title || "Luxury Holiday Experience";
+    const dest = data.destination || "Custom Itinerary";
+    const travelDate = data.travel_date || "Flexible Dates";
+    const pax = data.pax_count || 2;
+    const vehicle = data.vehicle_standard || "Private AC Vehicle Included";
+
+    let flHtml = '';
+    if (Array.isArray(data.flights) && data.flights.length > 0) {
+        let fList = data.flights.map(fl => `
+            <div style="border-left: 2.5px solid #0f172a; padding-left: 12px; margin-bottom: 10px; font-size: 11.5px;">
+                <strong>✈ ${fl.route || 'Flight Sector'} (${fl.flight_number || 'TBD'})</strong><br>
+                <span style="color: #64748b;">Departure: ${fl.dep_date || ''} ${fl.dep_time || ''} | Arrival: ${fl.arr_date || ''} ${fl.arr_time || ''}</span>
+            </div>
+        `).join('');
+        flHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800;">I. Aviation Matrices</h3>${fList}</div>`;
+    }
+
+    let htHtml = '';
+    if (Array.isArray(data.hotels) && data.hotels.length > 0) {
+        let hRows = data.hotels.map(h => `
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11.5px;">
+                <td style="padding: 9px 8px;">🏢 <strong>${h.hotel_name || 'Hotel Stay'}</strong> ${h.room_category ? `(${h.room_category})` : ''}</td>
+                <td style="text-align: center; padding: 9px 8px;">${formatPremiumDate(h.check_in)}</td>
+                <td style="text-align: center; padding: 9px 8px;">${formatPremiumDate(h.check_out)}</td>
+                <td style="text-align: center; color: #4f46e5; font-weight: 700; padding: 9px 8px;">${h.nights || 1} N</td>
+            </tr>
+        `).join('');
+        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800;">II. Living Breakdowns</h3><table style="width: 100%; border-collapse: collapse; font-size: 11px;"><thead><tr style="background: #f8fafc; color: #475569;"><th style="padding: 6px 8px; text-align: left;">Resort Property</th><th style="padding: 6px 8px; text-align: center;">Check-In</th><th style="padding: 6px 8px; text-align: center;">Check-Out</th><th style="padding: 6px 8px; text-align: center;">Duration</th></tr></thead><tbody>${hRows}</tbody></table></div>`;
+    }
+
+    let dyHtml = '';
+    if (Array.isArray(data.itinerary_days) && data.itinerary_days.length > 0) {
+        let dList = data.itinerary_days.map((d, i) => `
+            <div style="margin-bottom: 14px; background: #fafafa; padding: 14px; border-radius: 10px; border: 1px solid #f1f5f9;">
+                <h4 style="margin: 0 0 4px 0; font-size: 12px; color: #0f172a; font-weight: 800;">DAY 0${i + 1} &bull; ${d.title || 'Sightseeing & Transfers'}</h4>
+                <p style="margin: 0; font-size: 11px; color: #475569; line-height: 1.6;">${d.description || ''}</p>
+            </div>
+        `).join('');
+        dyHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800;">III. Timeline Loops</h3>${dList}</div>`;
+    }
+
+    const incList = Array.isArray(data.inclusions) ? data.inclusions.map(t => `<li style="list-style-type: none; padding-left: 14px; position: relative; margin-bottom: 4px;"><span style="position: absolute; left: 0; color: #10b981; font-weight: bold;">✓</span>${t}</li>`).join('') : '';
+    const excList = Array.isArray(data.exclusions) ? data.exclusions.map(t => `<li style="list-style-type: none; padding-left: 14px; position: relative; margin-bottom: 4px;"><span style="position: absolute; left: 0; color: #ef4444; font-weight: bold;">✕</span>${t}</li>`).join('') : '';
+
+    return `
+        <div id="ai-compiled-proposal-inner" style="padding: 26px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; color: #1e293b; line-height: 1.5;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 18px;">
+                <div>
+                    <h2 style="font-size: 22px; font-weight: 900; margin: 0; letter-spacing: -0.5px; color: #0f172a;">TRAVEL WORLD WIDE</h2>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">Bridging Gaps</p>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.45;">
+                    <p style="margin: 0; font-weight: 700; color: #0f172a;">salestravelworldwide@gmail.com</p>
+                    <p style="margin: 0; font-weight: 500;">+91 88926 89595</p>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; border-radius: 12px; padding: 14px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11.5px; border: 1px solid #e2e8f0;">
+                <div><strong>Experience:</strong> ${title}</div>
+                <div><strong>Destination:</strong> 📍 ${dest}</div>
+                <div><strong>Dates:</strong> 📅 ${travelDate}</div>
+                <div><strong>Guests:</strong> 👥 ${pax} Adults</div>
+                <div style="grid-column: span 2;"><strong>Ground Fleet:</strong> 🚘 ${vehicle}</div>
+            </div>
+
+            ${flHtml}
+            ${htHtml}
+            ${dyHtml}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border-top: 1px solid #e2e8f0; padding-top: 14px; margin-bottom: 20px;">
+                <div>
+                    <h4 style="font-size: 10px; color: #10b981; margin: 0 0 6px 0; text-transform: uppercase; font-weight: 800;">✓ Inclusions</h4>
+                    <ul style="font-size: 10.5px; color: #475569; padding: 0; margin: 0;">${incList || '<li>Standard full inclusions applied.</li>'}</ul>
+                </div>
+                <div>
+                    <h4 style="font-size: 10px; color: #ef4444; margin: 0 0 6px 0; text-transform: uppercase; font-weight: 800;">✕ Exclusions</h4>
+                    <ul style="font-size: 10.5px; color: #475569; padding: 0; margin: 0;">${excList || '<li>Personal laundry, tips, extra meals.</li>'}</ul>
+                </div>
+            </div>
+
+            <div style="background: #0f172a; color: #ffffff; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                <div><span style="font-size: 10px; color: #94a3b8; display: block; font-weight: 600;">GRAND CLIENT INVESTMENT (ALL-INCLUSIVE)</span></div>
+                <div style="font-size: 18px; font-weight: 800; color: #10b981; font-family: monospace;" id="ai-rendered-grand-price">₹0/-</div>
+            </div>
+        </div>
+    `;
+}
+
 async function handleAutonomousAiBuild() {
     const rawText = aiFreeRawText?.value?.trim();
     if (!rawText) {
@@ -273,39 +368,55 @@ async function handleAutonomousAiBuild() {
 
     aiFreeGenerateBtn.disabled = true;
     aiFreeGenerateBtn.innerHTML = `<span class="animate-spin mr-2">↻</span> Building Proposal...`;
-    if (aiCanvasStatus) aiCanvasStatus.innerText = "Discovering AI model & generating proposal...";
+    if (aiCanvasStatus) aiCanvasStatus.innerText = "Parsing quotation details...";
 
-    const prompt = `You are an elite luxury travel proposal generator for the brand "Travel World Wide" (salestravelworldwide@gmail.com, +91 88926 89595).
-Transform the raw text into a comprehensive luxury HTML document layout and extract metadata.
+    const prompt = `Extract trip details from the text below into strict, valid JSON.
 
-Return valid JSON adhering to:
+SCHEMA:
 {
-  "title": "Compelling holiday title",
+  "title": "A compelling luxury travel proposal title",
   "destination": "Destination name",
+  "travel_date": "Date string or Flexible",
+  "pax_count": 2,
+  "vehicle_standard": "Vehicle or transfers included",
   "detected_net_cost": 0,
-  "proposal_html": "FULL STYLED INLINE HTML STRING (do NOT include html or body tags, just inner styled container)"
+  "inclusions": ["inclusion 1", "inclusion 2"],
+  "exclusions": ["exclusion 1", "exclusion 2"],
+  "flights": [
+    {
+      "flight_number": "string",
+      "route": "string",
+      "dep_date": "string",
+      "dep_time": "string",
+      "arr_date": "string",
+      "arr_time": "string"
+    }
+  ],
+  "hotels": [
+    {
+      "hotel_name": "string",
+      "room_category": "string",
+      "check_in": "string",
+      "check_out": "string",
+      "nights": 1
+    }
+  ],
+  "itinerary_days": [
+    {
+      "title": "Day headline",
+      "description": "Comprehensive details of activities for the day"
+    }
+  ]
 }
-
-HTML DESIGN GUIDELINES for "proposal_html":
-- Clean white background with dark typography (#111827) and inline CSS styling.
-- Header with "TRAVEL WORLD WIDE" (font-weight:900), tagline "Bridging Gaps", email and phone.
-- Overview card: Trip title, Destination, Travel Dates (if found), Guests/Pax, Ground Vehicle standard.
-- Flight section (if flights exist in text) with route, flight number, timings.
-- Accommodation Table with Hotel names, room categories, check-in, check-out, duration.
-- Detailed Day-by-Day Timeline formatted with day badges (DAY 01, DAY 02) and detailed descriptions.
-- 2-Column Inclusions (green checkmarks) and Exclusions (red crosses).
-- Bottom Price Banner in dark navy (#0f172a) with white text, containing '<span id="ai-rendered-grand-price">CALCULATING...</span>'.
 
 Vendor Text:
 """
 ${rawText}
-"""
-
-Return ONLY raw JSON without markdown code fences.`;
+"""`;
 
     try {
         const liveModel = await getLiveWorkingGroqModel();
-        if (aiCanvasStatus) aiCanvasStatus.innerText = `Generating layout with ${liveModel}...`;
+        if (aiCanvasStatus) aiCanvasStatus.innerText = `Parsing with ${liveModel}...`;
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -315,7 +426,10 @@ Return ONLY raw JSON without markdown code fences.`;
             },
             body: JSON.stringify({
                 model: liveModel,
-                messages: [{ role: "user", content: prompt }],
+                messages: [
+                    { role: "system", content: "You output JSON strictly matching the schema with zero conversation." },
+                    { role: "user", content: prompt }
+                ],
                 response_format: { type: "json_object" },
                 temperature: 0.1
             })
@@ -327,17 +441,14 @@ Return ONLY raw JSON without markdown code fences.`;
         }
 
         const data = await response.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
+        currentAiData = JSON.parse(data.choices[0].message.content);
 
-        currentAiTitle = parsed.title || "Luxury Holiday Proposal";
-        currentAiDestination = parsed.destination || "Custom Itinerary";
-        currentGeneratedProposalHtml = parsed.proposal_html || "<p>Quotation generated.</p>";
-
-        if (parsed.detected_net_cost && Number(parsed.detected_net_cost) > 0) {
-            aiPricingNet.value = Math.round(Number(parsed.detected_net_cost));
+        // Update Net Cost input if detected
+        if (currentAiData.detected_net_cost && Number(currentAiData.detected_net_cost) > 0) {
+            aiPricingNet.value = Math.round(Number(currentAiData.detected_net_cost));
         }
 
-        aiQuotePreviewPane.innerHTML = currentGeneratedProposalHtml;
+        aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
         recalculateAiPricing();
 
         if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
@@ -359,31 +470,24 @@ async function handleAiRefinePrompt() {
         alert("Please enter what changes or additions you'd like made.");
         return;
     }
-    if (!currentGeneratedProposalHtml) {
+    if (!currentAiData) {
         alert("Please generate a proposal first before refining.");
         return;
     }
 
     aiRefineSubmitBtn.disabled = true;
     aiRefineSubmitBtn.innerHTML = `<span class="animate-spin">↻</span>`;
-    if (aiCanvasStatus) aiCanvasStatus.innerText = "Refining proposal with AI...";
+    if (aiCanvasStatus) aiCanvasStatus.innerText = "Refining with AI...";
 
-    const prompt = `You are modifying an existing luxury travel quotation HTML document.
-Follow the user's specific request and return the updated complete HTML and title in JSON.
+    const prompt = `Modify the current trip JSON according to the user request.
 
 USER REQUEST:
 "${refineQuery}"
 
-CURRENT PROPOSAL HTML:
-"""
-${currentGeneratedProposalHtml}
-"""
+CURRENT JSON DATA:
+${JSON.stringify(currentAiData)}
 
-Return valid JSON adhering to:
-{
-  "updated_title": "string",
-  "updated_html": "FULL MODIFIED INLINE HTML STRING (ensure '<span id=\\"ai-rendered-grand-price\\">...</span>' is preserved)"
-}`;
+Return the updated valid JSON adhering to the exact same schema.`;
 
     try {
         const liveModel = await getLiveWorkingGroqModel();
@@ -395,7 +499,10 @@ Return valid JSON adhering to:
             },
             body: JSON.stringify({
                 model: liveModel,
-                messages: [{ role: "user", content: prompt }],
+                messages: [
+                    { role: "system", content: "You modify and return valid JSON matching schemas." },
+                    { role: "user", content: prompt }
+                ],
                 response_format: { type: "json_object" },
                 temperature: 0.1
             })
@@ -404,14 +511,10 @@ Return valid JSON adhering to:
         if (!response.ok) throw new Error("Refinement failed: " + response.status);
 
         const data = await response.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
+        currentAiData = JSON.parse(data.choices[0].message.content);
 
-        if (parsed.updated_title) currentAiTitle = parsed.updated_title;
-        if (parsed.updated_html) {
-            currentGeneratedProposalHtml = parsed.updated_html;
-            aiQuotePreviewPane.innerHTML = currentGeneratedProposalHtml;
-            recalculateAiPricing();
-        }
+        aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
+        recalculateAiPricing();
 
         aiRefinePromptInput.value = '';
         if (aiCanvasStatus) aiCanvasStatus.innerText = "Refinements applied";
@@ -428,11 +531,11 @@ Return valid JSON adhering to:
 }
 
 function exportAiBuiltProposalPDF() {
-    if (!aiQuotePreviewPane || !currentGeneratedProposalHtml) {
+    if (!aiQuotePreviewPane || !currentAiData) {
         alert("No generated proposal to export.");
         return;
     }
-    const cleanFileName = currentAiTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanFileName = (currentAiData.title || "Travel_Proposal").replace(/[^a-zA-Z0-9_-]/g, '_');
     html2pdf().set({
         margin: [10, 10, 14, 10],
         filename: `${cleanFileName}_Proposal.pdf`,
@@ -443,7 +546,7 @@ function exportAiBuiltProposalPDF() {
 }
 
 async function saveAiBuiltProposalToSupabase() {
-    if (!currentGeneratedProposalHtml) {
+    if (!currentAiData) {
         alert("Generate a proposal before saving.");
         return;
     }
@@ -454,11 +557,15 @@ async function saveAiBuiltProposalToSupabase() {
 
     try {
         const { error } = await supabaseClient.from('itineraries').insert([{
-            title: currentAiTitle,
-            destination: currentAiDestination,
+            title: currentAiData.title || "Custom AI Proposal",
+            destination: currentAiData.destination || "Custom Itinerary",
             total_price: grandTotal,
             dmc_net_cost: currentAiNetCost,
-            dmc_markup_pct: currentAiMarkupType === 'pct' ? currentAiMarkupVal : 0
+            dmc_markup_pct: currentAiMarkupType === 'pct' ? currentAiMarkupVal : 0,
+            inclusions: currentAiData.inclusions || [],
+            exclusions: currentAiData.exclusions || [],
+            hotel_details: currentAiData.hotels || [],
+            flight_details: currentAiData.flights || []
         }]);
 
         if (error) throw error;
