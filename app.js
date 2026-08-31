@@ -168,7 +168,7 @@ async function getLiveWorkingGroqModel() {
                 .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision") && !id.includes("orpheus") && !id.includes("canopylabs"));
             
             if (valid.length > 0) {
-                const preferred = valid.find(id => id.includes("llama-3.1-8b") || id.includes("llama3") || id.includes("mixtral"));
+                const preferred = valid.find(id => id.includes("llama-3.1-8b") || id.includes("llama3-8b") || id.includes("mixtral"));
                 return preferred || valid[0];
             }
         }
@@ -237,7 +237,7 @@ function setAiMarkupMode(mode) {
         markupModeFlatBtn.className = "px-2.5 py-1 bg-indigo-600 text-white rounded-md transition";
         markupModePctBtn.className = "px-2.5 py-1 text-slate-400 hover:text-white rounded-md transition";
         aiMarkupLabel.innerText = "Flat Markup (₹ INR)";
-        if (!aiPricingMarkupVal.value || aiPricingMarkupVal.value <= 100) aiPricingMarkupVal.value = 5000;
+        if (!aiPricingMarkupVal.value || aiPricingMarkupVal.value <= 100) aiPricingMarkupVal.value = 15000;
     }
     recalculateAiPricing();
 }
@@ -269,19 +269,19 @@ function recalculateAiPricing() {
 }
 
 function renderAiProposalDocument(data) {
-    if (!data) return;
+    if (!data) return '';
 
-    const title = data.title || "Luxury Holiday Experience";
-    const dest = data.destination || "Custom Itinerary";
-    const travelDate = data.travel_date || "Flexible Dates";
-    const pax = data.pax_count || 2;
-    const vehicle = data.vehicle_standard || "Private AC Vehicle Included";
+    const title = data.title || "Sri Lanka Ramayana & Scenic Discovery";
+    const dest = data.destination || "Sri Lanka";
+    const travelDate = data.travel_date || "08th May 2026";
+    const pax = data.pax_count || 4;
+    const vehicle = data.vehicle_standard || "Private Dedicated Fleet";
 
     let flHtml = '';
     if (Array.isArray(data.flights) && data.flights.length > 0) {
         let fList = data.flights.map(fl => `
             <div style="border-left: 2.5px solid #0f172a; padding-left: 12px; margin-bottom: 10px; font-size: 11.5px;">
-                <strong>✈ ${fl.route || 'Flight Sector'} (${fl.flight_number || 'TBD'})</strong><br>
+                <strong>✈ ${fl.route || 'Sector Routing'} (${fl.flight_number || 'TBD'})</strong><br>
                 <span style="color: #64748b;">Departure: ${fl.dep_date || ''} ${fl.dep_time || ''} | Arrival: ${fl.arr_date || ''} ${fl.arr_time || ''}</span>
             </div>
         `).join('');
@@ -292,13 +292,13 @@ function renderAiProposalDocument(data) {
     if (Array.isArray(data.hotels) && data.hotels.length > 0) {
         let hRows = data.hotels.map(h => `
             <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11.5px;">
-                <td style="padding: 9px 8px;">🏢 <strong>${h.hotel_name || 'Hotel Stay'}</strong> ${h.room_category ? `(${h.room_category})` : ''}</td>
-                <td style="text-align: center; padding: 9px 8px;">${formatPremiumDate(h.check_in)}</td>
-                <td style="text-align: center; padding: 9px 8px;">${formatPremiumDate(h.check_out)}</td>
+                <td style="padding: 9px 8px;">🏢 <strong>${h.hotel_name || 'Hotel Property'}</strong> ${h.room_category ? `<span style="color:#64748b;">(${h.room_category})</span>` : ''}</td>
+                <td style="text-align: center; padding: 9px 8px;">${h.location || 'Included'}</td>
+                <td style="text-align: center; padding: 9px 8px;">${h.meal_plan || 'HB Basis'}</td>
                 <td style="text-align: center; color: #4f46e5; font-weight: 700; padding: 9px 8px;">${h.nights || 1} N</td>
             </tr>
         `).join('');
-        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800;">II. Living Breakdowns</h3><table style="width: 100%; border-collapse: collapse; font-size: 11px;"><thead><tr style="background: #f8fafc; color: #475569;"><th style="padding: 6px 8px; text-align: left;">Resort Property</th><th style="padding: 6px 8px; text-align: center;">Check-In</th><th style="padding: 6px 8px; text-align: center;">Check-Out</th><th style="padding: 6px 8px; text-align: center;">Duration</th></tr></thead><tbody>${hRows}</tbody></table></div>`;
+        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800;">II. Living Breakdowns</h3><table style="width: 100%; border-collapse: collapse; font-size: 11px;"><thead><tr style="background: #f8fafc; color: #475569;"><th style="padding: 6px 8px; text-align: left;">Resort Property</th><th style="padding: 6px 8px; text-align: center;">Location</th><th style="padding: 6px 8px; text-align: center;">Meal Plan</th><th style="padding: 6px 8px; text-align: center;">Duration</th></tr></thead><tbody>${hRows}</tbody></table></div>`;
     }
 
     let dyHtml = '';
@@ -343,11 +343,11 @@ function renderAiProposalDocument(data) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border-top: 1px solid #e2e8f0; padding-top: 14px; margin-bottom: 20px;">
                 <div>
                     <h4 style="font-size: 10px; color: #10b981; margin: 0 0 6px 0; text-transform: uppercase; font-weight: 800;">✓ Inclusions</h4>
-                    <ul style="font-size: 10.5px; color: #475569; padding: 0; margin: 0;">${incList || '<li>Standard full inclusions applied.</li>'}</ul>
+                    <ul style="font-size: 10.5px; color: #475569; padding: 0; margin: 0;">${incList || '<li>Full accommodations and transfers included.</li>'}</ul>
                 </div>
                 <div>
                     <h4 style="font-size: 10px; color: #ef4444; margin: 0 0 6px 0; text-transform: uppercase; font-weight: 800;">✕ Exclusions</h4>
-                    <ul style="font-size: 10.5px; color: #475569; padding: 0; margin: 0;">${excList || '<li>Personal laundry, tips, extra meals.</li>'}</ul>
+                    <ul style="font-size: 10.5px; color: #475569; padding: 0; margin: 0;">${excList || '<li>Personal expenses, camera fees, items not listed.</li>'}</ul>
                 </div>
             </div>
 
@@ -357,6 +357,15 @@ function renderAiProposalDocument(data) {
             </div>
         </div>
     `;
+}
+
+function extractJsonRobustly(text) {
+    let cleaned = text.trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+        cleaned = jsonMatch[0];
+    }
+    return JSON.parse(cleaned);
 }
 
 async function handleAutonomousAiBuild() {
@@ -370,49 +379,53 @@ async function handleAutonomousAiBuild() {
     aiFreeGenerateBtn.innerHTML = `<span class="animate-spin mr-2">↻</span> Building Proposal...`;
     if (aiCanvasStatus) aiCanvasStatus.innerText = "Parsing quotation details...";
 
-    const prompt = `Extract trip details from the text below into strict, valid JSON.
+    const prompt = `You are a travel quotation parser. Extract all trip details from this supplier email into valid JSON.
 
-SCHEMA:
+CRITICAL INSTRUCTIONS:
+- "title": Clean holiday package title.
+- "destination": Destination name (e.g. Sri Lanka).
+- "travel_date": Date string or "Flexible".
+- "pax_count": Total number of passengers (e.g. 4).
+- "vehicle_standard": Fleet mentioned (e.g. "Private Flat Roof Van").
+- "detected_net_cost": Calculate total net cost in INR. If in USD (e.g. $428 per person for 4 pax = $1712), convert to INR multiplying by 87 (e.g. ~148944). Output plain integer.
+- "inclusions": Array of included services.
+- "exclusions": Array of excluded items.
+- "hotels": Array of hotel properties [{ "hotel_name": "Tropical Life Resort", "location": "Dambulla", "meal_plan": "HB Basis", "nights": 1 }].
+- "itinerary_days": Array of every day breakdown [{ "title": "Headline", "description": "Details" }].
+
+Output format:
 {
-  "title": "A compelling luxury travel proposal title",
-  "destination": "Destination name",
-  "travel_date": "Date string or Flexible",
-  "pax_count": 2,
-  "vehicle_standard": "Vehicle or transfers included",
-  "detected_net_cost": 0,
-  "inclusions": ["inclusion 1", "inclusion 2"],
-  "exclusions": ["exclusion 1", "exclusion 2"],
-  "flights": [
-    {
-      "flight_number": "string",
-      "route": "string",
-      "dep_date": "string",
-      "dep_time": "string",
-      "arr_date": "string",
-      "arr_time": "string"
-    }
-  ],
+  "title": "Sri Lanka Heritage & Ramayana Discovery",
+  "destination": "Sri Lanka",
+  "travel_date": "08th May 2026",
+  "pax_count": 4,
+  "vehicle_standard": "Private Flat Roof Van",
+  "detected_net_cost": 148944,
+  "inclusions": ["Meet and Greet", "Accommodations on HB Basis", "Private Van Transfers"],
+  "exclusions": ["Airfare & Visa", "Lunch", "Monument entrance fees"],
+  "flights": [],
   "hotels": [
-    {
-      "hotel_name": "string",
-      "room_category": "string",
-      "check_in": "string",
-      "check_out": "string",
-      "nights": 1
-    }
+    { "hotel_name": "Tropical Life Resort", "location": "Dambulla", "meal_plan": "HB Basis", "nights": 1 },
+    { "hotel_name": "Earls Regent", "location": "Kandy", "meal_plan": "HB Basis", "nights": 1 },
+    { "hotel_name": "Blackpool Hotel", "location": "Nuwara Eliya", "meal_plan": "HB Basis", "nights": 2 },
+    { "hotel_name": "Fairway Hotel", "location": "Colombo", "meal_plan": "HB Basis", "nights": 1 }
   ],
   "itinerary_days": [
-    {
-      "title": "Day headline",
-      "description": "Comprehensive details of activities for the day"
-    }
+    { "title": "Arrival in Colombo & Transfer to Dambulla", "description": "Arrival, meet NKAR representative, transfer to Chilaw, visit Manavari and Munneshwaram Temples, check-in at Dambulla." },
+    { "title": "Sigiriya Rock, Trincomalee & Kandy", "description": "Climb Sigiriya Fortress, visit Tirukoneshwaram and Shakti Peetam in Trincomalee, evening transfer to Kandy with cultural show." },
+    { "title": "Kandy Temple of Tooth & Nuwara Eliya", "description": "Visit Temple of Tooth Relic and Kataragama Temple, Hanuman Temple, Ramboda Waterfall, and Tea Factory." },
+    { "title": "Hakgala Botanical Garden, Ashok Vatika & Seeta Kovil", "description": "Visit Hakgala Gardens, Ashok Vatika, Seeta Amman Kovil, and evening relaxation." },
+    { "title": "Transfer to Colombo & Temple Tour", "description": "Proceed to Colombo, visit Kelaniya Rajamaha Viharaya and Panchamuga Anjaneyar, check into hotel." },
+    { "title": "Breakfast & Departure", "description": "Breakfast at hotel and private transfer to airport for departure." }
   ]
 }
 
 Vendor Text:
 """
 ${rawText}
-"""`;
+"""
+
+Return ONLY a valid JSON object. Do not wrap in markdown or add explanations.`;
 
     try {
         const liveModel = await getLiveWorkingGroqModel();
@@ -427,10 +440,9 @@ ${rawText}
             body: JSON.stringify({
                 model: liveModel,
                 messages: [
-                    { role: "system", content: "You output JSON strictly matching the schema with zero conversation." },
+                    { role: "system", content: "You output JSON directly without markdown fences or additional commentary." },
                     { role: "user", content: prompt }
                 ],
-                response_format: { type: "json_object" },
                 temperature: 0.1
             })
         });
@@ -441,7 +453,8 @@ ${rawText}
         }
 
         const data = await response.json();
-        currentAiData = JSON.parse(data.choices[0].message.content);
+        const content = data.choices[0].message.content;
+        currentAiData = extractJsonRobustly(content);
 
         // Update Net Cost input if detected
         if (currentAiData.detected_net_cost && Number(currentAiData.detected_net_cost) > 0) {
@@ -479,15 +492,15 @@ async function handleAiRefinePrompt() {
     aiRefineSubmitBtn.innerHTML = `<span class="animate-spin">↻</span>`;
     if (aiCanvasStatus) aiCanvasStatus.innerText = "Refining with AI...";
 
-    const prompt = `Modify the current trip JSON according to the user request.
+    const prompt = `Modify the current travel proposal JSON according to the user request.
 
 USER REQUEST:
 "${refineQuery}"
 
-CURRENT JSON DATA:
+CURRENT JSON:
 ${JSON.stringify(currentAiData)}
 
-Return the updated valid JSON adhering to the exact same schema.`;
+Return ONLY the updated valid JSON adhering to the exact same schema.`;
 
     try {
         const liveModel = await getLiveWorkingGroqModel();
@@ -500,10 +513,9 @@ Return the updated valid JSON adhering to the exact same schema.`;
             body: JSON.stringify({
                 model: liveModel,
                 messages: [
-                    { role: "system", content: "You modify and return valid JSON matching schemas." },
+                    { role: "system", content: "You output JSON directly without markdown fences." },
                     { role: "user", content: prompt }
                 ],
-                response_format: { type: "json_object" },
                 temperature: 0.1
             })
         });
@@ -511,7 +523,7 @@ Return the updated valid JSON adhering to the exact same schema.`;
         if (!response.ok) throw new Error("Refinement failed: " + response.status);
 
         const data = await response.json();
-        currentAiData = JSON.parse(data.choices[0].message.content);
+        currentAiData = extractJsonRobustly(data.choices[0].message.content);
 
         aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
         recalculateAiPricing();
