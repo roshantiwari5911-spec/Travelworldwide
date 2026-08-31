@@ -2,8 +2,8 @@
 const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 
-// Gemini API Key for Auto-Parsing DMC Emails
-const GEMINI_API_KEY = "AQ.Ab8RN6Ihg5uk9fMuap-k9rGBfqYPpuqRrIOdkBlgPhSaqcDVBw";
+// OpenRouter API Key for Auto-Parsing DMC Emails
+const OPENROUTER_API_KEY = "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";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
@@ -190,23 +190,30 @@ ${rawText}
 Return ONLY raw JSON, with no markdown code blocks.`;
 
     try {
-        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
-            headers: { 
+            headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${GEMINI_API_KEY}`,
-                "x-goog-api-key": GEMINI_API_KEY
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "HTTP-Referer": window.location.origin,
+                "X-Title": "Travel World Wide CRM"
             },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
+                model: "google/gemini-2.5-flash",
+                messages: [{ role: "user", content: prompt }]
             })
         });
 
         if (!response.ok) throw new Error("AI request failed with status: " + response.status);
 
         const data = await response.json();
-        const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+        let content = data.choices[0].message.content.trim();
+
+        if (content.startsWith("```json")) content = content.slice(7);
+        if (content.startsWith("```")) content = content.slice(3);
+        if (content.endsWith("```")) content = content.slice(0, -3);
+
+        const parsed = JSON.parse(content.trim());
 
         // 1. Populate Basic Information
         if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
