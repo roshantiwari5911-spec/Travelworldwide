@@ -70,6 +70,36 @@
 
     <canvas id="bg-canvas"></canvas>
 
+    <!-- AI DMC Quotation Importer Modal -->
+    <div id="ai-quotation-modal" class="fixed inset-0 bg-black/75 backdrop-blur-xl z-[150] hidden items-center justify-center p-4 transition-all duration-300">
+        <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl relative">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">Gemini AI Engine</span>
+                    <h3 class="text-lg font-semibold text-white tracking-tight mt-0.5">Parse DMC Quotation Email</h3>
+                </div>
+                <button type="button" id="close-ai-modal-btn" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">
+                Paste the itinerary or supplier quotation email directly below. The AI will extract package details, flight routes, accommodations, daily itineraries, and cost sheets automatically.
+            </p>
+            <textarea id="ai-dmc-raw-text" rows="10" placeholder="e.g. Dear Team, Please find below the proposed quotation for 5N/6D Dubai tour package...&#10;&#10;Day 1: Arrival & Dhow Cruise&#10;Day 2: Half Day City Tour & Burj Khalifa 124th Floor...&#10;&#10;Inclusions:...&#10;Net Cost: USD 450 per person" class="w-full rounded-2xl px-4 py-3 text-xs focus:outline-none text-white resize-none border border-white/10 font-mono"></textarea>
+            
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-5 pt-4 border-t border-white/10">
+                <span id="ai-status-msg" class="text-xs text-indigo-300 font-mono"></span>
+                <div class="flex gap-2 w-full sm:w-auto justify-end">
+                    <button type="button" id="cancel-ai-btn" class="px-4 py-2.5 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition">Cancel</button>
+                    <button type="button" id="execute-ai-btn" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-lg shadow-indigo-950/40 transition flex items-center justify-center gap-2">
+                        <i data-lucide="sparkles" class="h-4 w-4"></i>
+                        <span>Auto-Fill Quotation</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="login-gate" class="w-full max-w-md glass-panel rounded-[2rem] p-6 sm:p-10 shadow-2xl text-center premium-transition z-50 relative my-auto">
         <div class="mb-6">
             <h1 class="text-2xl font-extralight tracking-[0.3em] text-white uppercase mb-1 luxury-text-glow">TRAVEL WORLD WIDE</h1>
@@ -160,10 +190,17 @@
                         <h2 class="text-md sm:text-lg font-medium text-white/90">Create New Quotation</h2>
                         <span id="active-record-badge" class="hidden text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">Editing Mode</span>
                     </div>
-                    <div class="w-full sm:w-48 text-left">
-                        <select id="pkg-customer-select" class="w-full rounded-lg px-3 py-2 text-xs text-indigo-300 focus:outline-none transition">
-                            <option value="">-- Link Client Profile --</option>
-                        </select>
+                    <div class="flex items-center gap-2">
+                        <!-- AI Magic Auto-Fill Trigger Button -->
+                        <button type="button" id="open-ai-modal-btn" class="text-xs bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 text-indigo-300 border border-indigo-500/30 px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="sparkles" class="h-3.5 w-3.5 text-indigo-400"></i>
+                            <span>AI Parse DMC</span>
+                        </button>
+                        <div class="w-full sm:w-44 text-left">
+                            <select id="pkg-customer-select" class="w-full rounded-lg px-3 py-2 text-xs text-indigo-300 focus:outline-none transition">
+                                <option value="">-- Link Client --</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 
