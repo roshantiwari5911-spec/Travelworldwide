@@ -130,28 +130,6 @@ function toggleAiModal(show) {
     }
 }
 
-async function getAvailableGroqModel() {
-    try {
-        const res = await fetch("https://api.groq.com/openai/v1/models", {
-            headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            const textModels = data.data
-                .map(m => m.id)
-                .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision"));
-            
-            // Prefer 70b or 8b llama / mixtral models
-            const preferred = textModels.find(id => id.includes("70b") || id.includes("8b") || id.includes("llama3") || id.includes("mixtral"));
-            if (preferred) return preferred;
-            if (textModels.length > 0) return textModels[0];
-        }
-    } catch (e) {
-        console.warn("Could not fetch models dynamically:", e);
-    }
-    return "llama3-8b-8192";
-}
-
 async function processDmcEmailWithAI() {
     const rawText = aiDmcRawText?.value?.trim();
     if (!rawText) {
@@ -161,7 +139,7 @@ async function processDmcEmailWithAI() {
 
     executeAiBtn.disabled = true;
     executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
-    if (aiStatusMsg) aiStatusMsg.innerText = "Detecting available model & extracting data...";
+    if (aiStatusMsg) aiStatusMsg.innerText = "Extracting flights, stays, activities & rates...";
 
     const prompt = `Extract all travel quotation details from the text below into strict, valid JSON.
 
@@ -211,105 +189,122 @@ ${rawText}
 
 Return raw JSON only without markdown formatting.`;
 
-    try {
-        const selectedModel = await getAvailableGroqModel();
-        if (aiStatusMsg) aiStatusMsg.innerText = `Parsing with ${selectedModel}...`;
+    const groqCandidateModels = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
+    ];
 
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: selectedModel,
-                messages: [{ role: "user", content: prompt }],
-                response_format: { type: "json_object" },
-                temperature: 0.2
-            })
-        });
+    let success = false;
+    let lastError = null;
 
-        if (!response.ok) {
-            const errBody = await response.text();
-            throw new Error(`AI request failed (${response.status}): ${errBody}`);
-        }
-
-        const data = await response.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
-
-        // 1. Populate Basic Information
-        if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
-        if (parsed.destination) document.getElementById('pkg-destination').value = parsed.destination;
-        if (parsed.travel_date) document.getElementById('pkg-date').value = parsed.travel_date;
-        if (parsed.pax_count) document.getElementById('pkg-pax').value = parsed.pax_count;
-        if (parsed.vehicle_standard) document.getElementById('pkg-vehicle').value = parsed.vehicle_standard;
-        if (parsed.dmc_net_cost) document.getElementById('dmc-net-cost').value = parsed.dmc_net_cost;
-        if (parsed.airfare_estimate) document.getElementById('pkg-airfare').value = parsed.airfare_estimate;
-
-        // 2. Inclusions & Exclusions
-        if (Array.isArray(parsed.inclusions) && parsed.inclusions.length > 0) {
-            document.getElementById('pkg-inclusions').value = parsed.inclusions.join('\n');
-        }
-        if (Array.isArray(parsed.exclusions) && parsed.exclusions.length > 0) {
-            document.getElementById('pkg-exclusions').value = parsed.exclusions.join('\n');
-        }
-
-        // 3. Populate Flights
-        if (Array.isArray(parsed.flights) && parsed.flights.length > 0) {
-            flightsContainer.innerHTML = '';
-            flightCount = 0;
-            parsed.flights.forEach(fl => {
-                addFlightSectorBlock();
-                const b = flightsContainer.lastChild;
-                if (fl.flight_number) b.querySelector('.fl-num').value = fl.flight_number;
-                if (fl.route) b.querySelector('.fl-route').value = fl.route;
-                if (fl.duration) b.querySelector('.fl-duration').value = fl.duration;
-                if (fl.dep_date) b.querySelector('.fl-dep-date').value = fl.dep_date;
-                if (fl.dep_time) b.querySelector('.fl-dep-time').value = fl.dep_time;
-                if (fl.arr_date) b.querySelector('.fl-arr-date').value = fl.arr_date;
-                if (fl.arr_time) b.querySelector('.fl-arr-time').value = fl.arr_time;
-                if (fl.net_cost && b.querySelector('.fl-net')) b.querySelector('.fl-net').value = fl.net_cost;
+    for (const modelName of groqCandidateModels) {
+        try {
+            if (aiStatusMsg) aiStatusMsg.innerText = `Connecting with ${modelName}...`;
+            
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [{ role: "user", content: prompt }],
+                    response_format: { type: "json_object" },
+                    temperature: 0.1
+                })
             });
+
+            if (!response.ok) {
+                const errTxt = await response.text();
+                throw new Error(`${response.status}: ${errTxt}`);
+            }
+
+            const data = await response.json();
+            const parsed = JSON.parse(data.choices[0].message.content);
+
+            // 1. Populate Basic Information
+            if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
+            if (parsed.destination) document.getElementById('pkg-destination').value = parsed.destination;
+            if (parsed.travel_date) document.getElementById('pkg-date').value = parsed.travel_date;
+            if (parsed.pax_count) document.getElementById('pkg-pax').value = parsed.pax_count;
+            if (parsed.vehicle_standard) document.getElementById('pkg-vehicle').value = parsed.vehicle_standard;
+            if (parsed.dmc_net_cost) document.getElementById('dmc-net-cost').value = parsed.dmc_net_cost;
+            if (parsed.airfare_estimate) document.getElementById('pkg-airfare').value = parsed.airfare_estimate;
+
+            // 2. Inclusions & Exclusions
+            if (Array.isArray(parsed.inclusions) && parsed.inclusions.length > 0) {
+                document.getElementById('pkg-inclusions').value = parsed.inclusions.join('\n');
+            }
+            if (Array.isArray(parsed.exclusions) && parsed.exclusions.length > 0) {
+                document.getElementById('pkg-exclusions').value = parsed.exclusions.join('\n');
+            }
+
+            // 3. Populate Flights
+            if (Array.isArray(parsed.flights) && parsed.flights.length > 0) {
+                flightsContainer.innerHTML = '';
+                flightCount = 0;
+                parsed.flights.forEach(fl => {
+                    addFlightSectorBlock();
+                    const b = flightsContainer.lastChild;
+                    if (fl.flight_number) b.querySelector('.fl-num').value = fl.flight_number;
+                    if (fl.route) b.querySelector('.fl-route').value = fl.route;
+                    if (fl.duration) b.querySelector('.fl-duration').value = fl.duration;
+                    if (fl.dep_date) b.querySelector('.fl-dep-date').value = fl.dep_date;
+                    if (fl.dep_time) b.querySelector('.fl-dep-time').value = fl.dep_time;
+                    if (fl.arr_date) b.querySelector('.fl-arr-date').value = fl.arr_date;
+                    if (fl.arr_time) b.querySelector('.fl-arr-time').value = fl.arr_time;
+                    if (fl.net_cost && b.querySelector('.fl-net')) b.querySelector('.fl-net').value = fl.net_cost;
+                });
+            }
+
+            // 4. Populate Hotels
+            if (Array.isArray(parsed.hotels) && parsed.hotels.length > 0) {
+                hotelsContainer.innerHTML = '';
+                hotelCount = 0;
+                parsed.hotels.forEach(ht => {
+                    addHotelStayBlock();
+                    const b = hotelsContainer.lastChild;
+                    if (ht.hotel_name) b.querySelector('.hotel-name').value = ht.hotel_name;
+                    if (ht.check_in) b.querySelector('.hotel-in').value = ht.check_in;
+                    if (ht.check_out) b.querySelector('.hotel-out').value = ht.check_out;
+                    if (ht.nights) b.querySelector('.hotel-nights').value = ht.nights;
+                });
+            }
+
+            // 5. Populate Days
+            if (Array.isArray(parsed.itinerary_days) && parsed.itinerary_days.length > 0) {
+                daysContainer.innerHTML = '';
+                dayCount = 0;
+                parsed.itinerary_days.forEach(dy => {
+                    addItineraryDay();
+                    const b = daysContainer.lastChild;
+                    if (dy.title) b.querySelector('.day-title-input').value = dy.title;
+                    if (dy.description) b.querySelector('.day-desc-input').value = dy.description;
+                });
+            }
+
+            toggleAiModal(false);
+            aiDmcRawText.value = '';
+            updateLivePreview();
+            success = true;
+            break;
+
+        } catch (err) {
+            console.warn(`Model ${modelName} failed, attempting next:`, err);
+            lastError = err;
         }
-
-        // 4. Populate Hotels
-        if (Array.isArray(parsed.hotels) && parsed.hotels.length > 0) {
-            hotelsContainer.innerHTML = '';
-            hotelCount = 0;
-            parsed.hotels.forEach(ht => {
-                addHotelStayBlock();
-                const b = hotelsContainer.lastChild;
-                if (ht.hotel_name) b.querySelector('.hotel-name').value = ht.hotel_name;
-                if (ht.check_in) b.querySelector('.hotel-in').value = ht.check_in;
-                if (ht.check_out) b.querySelector('.hotel-out').value = ht.check_out;
-                if (ht.nights) b.querySelector('.hotel-nights').value = ht.nights;
-            });
-        }
-
-        // 5. Populate Days
-        if (Array.isArray(parsed.itinerary_days) && parsed.itinerary_days.length > 0) {
-            daysContainer.innerHTML = '';
-            dayCount = 0;
-            parsed.itinerary_days.forEach(dy => {
-                addItineraryDay();
-                const b = daysContainer.lastChild;
-                if (dy.title) b.querySelector('.day-title-input').value = dy.title;
-                if (dy.description) b.querySelector('.day-desc-input').value = dy.description;
-            });
-        }
-
-        toggleAiModal(false);
-        aiDmcRawText.value = '';
-        updateLivePreview();
-
-    } catch (err) {
-        console.error(err);
-        alert("Failed to parse quotation: " + err.message);
-    } finally {
-        executeAiBtn.disabled = false;
-        executeAiBtn.innerHTML = `<i data-lucide="sparkles" class="h-4 w-4"></i><span>Auto-Fill Quotation</span>`;
-        if (typeof lucide !== "undefined") lucide.createIcons();
     }
+
+    if (!success) {
+        alert("Failed to parse quotation: " + (lastError?.message || "All models busy"));
+    }
+
+    executeAiBtn.disabled = false;
+    executeAiBtn.innerHTML = `<i data-lucide="sparkles" class="h-4 w-4"></i><span>Auto-Fill Quotation</span>`;
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function toggleLedgerDrawer(s) { 
