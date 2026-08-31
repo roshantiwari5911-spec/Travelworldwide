@@ -2,8 +2,8 @@
 const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 
-// OpenRouter API Key for Auto-Parsing DMC Emails
-const OPENROUTER_API_KEY = "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";
+// Free Groq Cloud Key for Fast DMC AI Extraction
+const GROQ_API_KEY = "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";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
@@ -141,15 +141,15 @@ async function processDmcEmailWithAI() {
     executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
     if (aiStatusMsg) aiStatusMsg.innerText = "Extracting flights, stays, activities & rates...";
 
-    const prompt = `Extract all trip information from this travel vendor quote into valid JSON only.
+    const prompt = `Extract all travel quotation details from the text below into strict, valid JSON.
 
 SCHEMA:
 {
-  "title": "A holiday package title",
+  "title": "Compelling holiday package title",
   "destination": "Destination name",
   "travel_date": "YYYY-MM-DD or empty string",
   "pax_count": 2,
-  "vehicle_standard": "e.g. Private AC Tempo Traveller",
+  "vehicle_standard": "e.g., Private AC Tempo Traveller",
   "dmc_net_cost": 0,
   "airfare_estimate": 0,
   "inclusions": ["item 1", "item 2"],
@@ -182,36 +182,35 @@ SCHEMA:
   ]
 }
 
-Quote:
+Vendor Text:
+"""
 ${rawText}
+"""
 
-Return raw JSON only without backticks or markdown fences.`;
+Return raw JSON only without markdown formatting.`;
 
     try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`
+                "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "deepseek/deepseek-chat:free",
-                messages: [{ role: "user", content: prompt }]
+                model: "llama-3.3-70b-versatile",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+                temperature: 0.2
             })
         });
 
         if (!response.ok) {
             const errBody = await response.text();
-            throw new Error(`AI request failed with status: ${response.status} - ${errBody}`);
+            throw new Error(`AI request failed (${response.status}): ${errBody}`);
         }
 
         const data = await response.json();
-        let content = data.choices[0].message.content.trim();
-
-        // Strip markdown backticks
-        content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(data.choices[0].message.content);
 
         // 1. Populate Basic Information
         if (parsed.title) document.getElementById('pkg-title').value = parsed.title;
