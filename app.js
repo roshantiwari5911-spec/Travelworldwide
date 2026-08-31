@@ -3,7 +3,7 @@ const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 
 // Gemini API Key for Auto-Parsing DMC Emails
-const GEMINI_API_KEY = "AQ.Ab8RN6JhM4y-5oZMRFwC6ZF1ROnmraBgFhIxduHSnDjIUdLUAA";
+const GEMINI_API_KEY = "AQ.Ab8RN6Ihg5uk9fMuap-k9rGBfqYPpuqRrIOdkBlgPhSaqcDVBw";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
@@ -190,9 +190,13 @@ ${rawText}
 Return ONLY raw JSON, with no markdown code blocks.`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${GEMINI_API_KEY}`,
+                "x-goog-api-key": GEMINI_API_KEY
+            },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { responseMimeType: "application/json" }
