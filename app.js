@@ -1,6 +1,6 @@
 // ====== SUPABASE CLOUD CONNECTION CONFIGURATION ======
 const SUPABASE_URL = "https://txqhsxyodszbfwsqvcjf.supabase.co"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4cWhzeHlvZHN6YmZ3c3F2Y2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTIzMTgsImV4cCI6MjA5Njk4ODMxOH0._86b10n0y6WPasyJqdCX-MKxtXfXtVyYsW9cS3B43cQ";
+const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
@@ -118,9 +118,9 @@ async function checkExistingAuthSession() {
 async function executeWorkspaceSignOut() {
     try { 
         await supabaseClient.auth.signOut(); 
-        crmWorkspace.style.opacity = "0"; 
-        setTimeout(() => window.location.reload(), 500); 
-    } catch (e) { alert(e.message); }
+    } catch (e) { console.warn(e); }
+    crmWorkspace.style.opacity = "0"; 
+    setTimeout(() => window.location.reload(), 500); 
 }
 
 function switchCrmModule(m) {
@@ -191,7 +191,8 @@ function resetBuilderWorkspaceForm() {
 async function fetchAndRenderItinerariesLedger() {
     try {
         const { data, error } = await supabaseClient.from('itineraries').select('id, title, destination, total_price, created_at').order('created_at', { ascending: false });
-        if (error) throw error; savedItinerariesLedger.innerHTML = '';
+        if (error) throw error; 
+        savedItinerariesLedger.innerHTML = '';
         if (data.length === 0) { savedItinerariesLedger.innerHTML = '<div class="text-gray-500 italic p-2 text-[11px]">No quotations saved yet.</div>'; return; }
         data.forEach(itin => {
             savedItinerariesLedger.innerHTML += `
@@ -328,7 +329,7 @@ function compileItineraryHTML() {
                 <div><h4 style="font-size:10px; color:#10b981; margin:0 0 6px 0;">✓ Inclusions</h4><ul style="font-size:10.5px; color:#4b5563; padding:0; margin:0;">${inc}</ul></div>
                 <div><h4 style="font-size:10px; color:#ef4444; margin:0 0 6px 0;">✕ Exclusions</h4><ul style="font-size:10.5px; color:#4b5563; padding:0; margin:0;">${exc}</ul></div>
             </div>
-            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:between; align-items:center;">
                 <div><span style="font-size:10px; color:#94a3b8; display:block;">GRAND CLIENT REVENUE INVESTMENT</span></div>
                 <div style="font-size:18px; font-weight:800; color:#10b981; font-family:monospace;">An All-Inclusive Quote: ₹${(Number(price) + Number(airfare)).toLocaleString('en-IN')}/-</div>
             </div>
@@ -407,7 +408,7 @@ function compileHotelVoucherHTML() {
     return `<div style="padding:20px; font-family:-apple-system, sans-serif; background:#fff; color:#1e293b;">
         <div style="display:flex; justify-content:space-between; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:20px;"><h2>TRAVEL WORLD WIDE</h2></div>
         ${vcHtml || '<p style="text-align:center; padding:20px; color:#94a3b8;">No vouchers created.</p>'}
-        ${tot > 0 ? `<div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:space-between; align-items:center;"><strong>TOTAL INVOICE PLATFORM QUOTE</strong><span style="font-size:18px; color:#10b981; font-weight:800;">₹${Math.round(tot).toLocaleString('en-IN')}/-</span></div>` : ''}
+        ${tot > 0 ? `<div style="background:#0f172a; color:#fff; border-radius:12px; padding:16px; display:flex; justify-content:between; align-items:center;"><strong>TOTAL INVOICE PLATFORM QUOTE</strong><span style="font-size:18px; color:#10b981; font-weight:800;">₹${Math.round(tot).toLocaleString('en-IN')}/-</span></div>` : ''}
     </div>`;
 }
 
@@ -525,6 +526,7 @@ async function saveItineraryToSupabase() {
         setTimeout(() => { saveBtn.innerText = originalText; saveBtn.style.backgroundColor = ""; saveBtn.style.opacity = "1"; }, 2500);
     } catch (err) { alert(`Cloud sync failed: ${err.message}`); saveBtn.innerText = originalText; saveBtn.style.opacity = "1"; }
 }
+
 window.deleteItineraryRecord = deleteItineraryRecord;
 window.removeFlightSectorBlock = removeFlightSectorBlock;
 window.removeHotelStayBlock = removeHotelStayBlock;
