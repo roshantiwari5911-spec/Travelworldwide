@@ -141,79 +141,74 @@ async function processDmcEmailWithAI() {
     executeAiBtn.innerHTML = `<span class="animate-spin mr-1">↻</span> Parsing Quotation...`;
     if (aiStatusMsg) aiStatusMsg.innerText = "Extracting flights, stays, activities & rates...";
 
-    const prompt = `You are an expert travel quotation extraction engine. 
-Extract all trip information from this DMC/vendor email into a clean, valid JSON format matching this exact schema:
+    const prompt = `Extract all trip information from this travel vendor quote into valid JSON only.
 
+SCHEMA:
 {
-  "title": "string (A compelling holiday package title)",
-  "destination": "string (Destination name)",
+  "title": "A holiday package title",
+  "destination": "Destination name",
   "travel_date": "YYYY-MM-DD or empty string",
   "pax_count": 2,
-  "vehicle_standard": "string (e.g., Private Sedan Transfers)",
+  "vehicle_standard": "e.g. Private AC Tempo Traveller",
   "dmc_net_cost": 0,
   "airfare_estimate": 0,
-  "inclusions": ["string", "string"],
-  "exclusions": ["string", "string"],
+  "inclusions": ["item 1", "item 2"],
+  "exclusions": ["item 1", "item 2"],
   "flights": [
     {
       "flight_number": "string",
-      "route": "string (e.g. DEL - DXB)",
+      "route": "string",
       "duration": "string",
-      "dep_date": "YYYY-MM-DD or empty string",
-      "dep_time": "HH:MM or empty string",
-      "arr_date": "YYYY-MM-DD or empty string",
-      "arr_time": "HH:MM or empty string",
+      "dep_date": "YYYY-MM-DD",
+      "dep_time": "HH:MM",
+      "arr_date": "YYYY-MM-DD",
+      "arr_time": "HH:MM",
       "net_cost": 0
     }
   ],
   "hotels": [
     {
       "hotel_name": "string",
-      "check_in": "YYYY-MM-DD or empty string",
-      "check_out": "YYYY-MM-DD or empty string",
+      "check_in": "YYYY-MM-DD",
+      "check_out": "YYYY-MM-DD",
       "nights": 1
     }
   ],
   "itinerary_days": [
     {
-      "title": "string",
-      "description": "string"
+      "title": "Day highlights",
+      "description": "Day details"
     }
   ]
 }
 
-Email content:
-"""
+Quote:
 ${rawText}
-"""
 
-Return ONLY raw JSON, with no markdown code blocks.`;
+Return raw JSON only without backticks or markdown fences.`;
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "HTTP-Referer": window.location.origin || "https://travelworldwide.com",
-                "X-Title": "Travel World Wide CRM"
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`
             },
             body: JSON.stringify({
-                models: [
-                    "google/gemini-2.0-flash-lite-001",
-                    "meta-llama/llama-3.1-8b-instruct:free",
-                    "mistralai/mistral-7b-instruct:free",
-                    "openrouter/auto"
-                ],
+                model: "deepseek/deepseek-chat:free",
                 messages: [{ role: "user", content: prompt }]
             })
         });
 
-        if (!response.ok) throw new Error("AI request failed with status: " + response.status);
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`AI request failed with status: ${response.status} - ${errBody}`);
+        }
 
         const data = await response.json();
         let content = data.choices[0].message.content.trim();
 
+        // Strip markdown backticks
         content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 
         const parsed = JSON.parse(content);
