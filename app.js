@@ -150,6 +150,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ==============================================================
+// DYNAMIC GROQ MODEL SELECTOR
+// ==============================================================
+async function getLiveWorkingGroqModel() {
+    try {
+        const res = await fetch("https://api.groq.com/openai/v1/models", {
+            headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const valid = data.data
+                .map(m => m.id)
+                .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision") && !id.includes("orpheus") && !id.includes("canopylabs"));
+            
+            if (valid.length > 0) {
+                const preferred = valid.find(id => id.includes("llama-3.1") || id.includes("llama3") || id.includes("mixtral"));
+                return preferred || valid[0];
+            }
+        }
+    } catch (e) {
+        console.warn("Live model query failed:", e);
+    }
+    return "llama-3.1-8b-instant";
+}
+
+// ==============================================================
 // MODULE TAB SWITCHING
 // ==============================================================
 function switchCrmModule(m) {
@@ -233,7 +258,6 @@ function recalculateAiPricing() {
     if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${margin.toLocaleString('en-IN')}`;
     if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
 
-    // Dynamically update the grand price in the rendered AI preview canvas
     const priceHolder = document.getElementById('ai-rendered-grand-price');
     if (priceHolder) {
         priceHolder.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
@@ -249,27 +273,27 @@ async function handleAutonomousAiBuild() {
 
     aiFreeGenerateBtn.disabled = true;
     aiFreeGenerateBtn.innerHTML = `<span class="animate-spin mr-2">↻</span> Building Proposal...`;
-    if (aiCanvasStatus) aiCanvasStatus.innerText = "Generating custom layout...";
+    if (aiCanvasStatus) aiCanvasStatus.innerText = "Discovering AI model & generating proposal...";
 
-    const prompt = `You are an elite travel luxury proposal generator for the travel brand "Travel World Wide" (salestravelworldwide@gmail.com, +91 88926 89595).
-Transform the raw DMC email / notes text into a comprehensive, luxury HTML document layout and extract metadata.
+    const prompt = `You are an elite luxury travel proposal generator for the brand "Travel World Wide" (salestravelworldwide@gmail.com, +91 88926 89595).
+Transform the raw text into a comprehensive luxury HTML document layout and extract metadata.
 
-Return a valid JSON object matching this schema:
+Return valid JSON adhering to:
 {
-  "title": "A captivating, high-end trip title",
+  "title": "Compelling holiday title",
   "destination": "Destination name",
   "detected_net_cost": 0,
-  "proposal_html": "FULL STYLED INLINE HTML STRING (do NOT include html/body tags, just the inner styled div)"
+  "proposal_html": "FULL STYLED INLINE HTML STRING (do NOT include html or body tags, just inner styled container)"
 }
 
 HTML DESIGN GUIDELINES for "proposal_html":
-- Use inline CSS styling on clean white background with dark typography (#111827).
+- Clean white background with dark typography (#111827) and inline CSS styling.
 - Header with "TRAVEL WORLD WIDE" (font-weight:900), tagline "Bridging Gaps", email and phone.
 - Overview card: Trip title, Destination, Travel Dates (if found), Guests/Pax, Ground Vehicle standard.
 - Flight section (if flights exist in text) with route, flight number, timings.
 - Accommodation Table with Hotel names, room categories, check-in, check-out, duration.
 - Detailed Day-by-Day Timeline formatted with day badges (DAY 01, DAY 02) and detailed descriptions.
-- 2-Column Inclusions (with green checkmarks) and Exclusions (with red crosses).
+- 2-Column Inclusions (green checkmarks) and Exclusions (red crosses).
 - Bottom Price Banner in dark navy (#0f172a) with white text, containing '<span id="ai-rendered-grand-price">CALCULATING...</span>'.
 
 Vendor Text:
@@ -277,9 +301,12 @@ Vendor Text:
 ${rawText}
 """
 
-Return ONLY raw JSON without markdown formatting.`;
+Return ONLY raw JSON without markdown code fences.`;
 
     try {
+        const liveModel = await getLiveWorkingGroqModel();
+        if (aiCanvasStatus) aiCanvasStatus.innerText = `Generating layout with ${liveModel}...`;
+
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -287,7 +314,7 @@ Return ONLY raw JSON without markdown formatting.`;
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: liveModel,
                 messages: [{ role: "user", content: prompt }],
                 response_format: { type: "json_object" },
                 temperature: 0.1
@@ -306,12 +333,10 @@ Return ONLY raw JSON without markdown formatting.`;
         currentAiDestination = parsed.destination || "Custom Itinerary";
         currentGeneratedProposalHtml = parsed.proposal_html || "<p>Quotation generated.</p>";
 
-        // Populate base cost from detection
         if (parsed.detected_net_cost && Number(parsed.detected_net_cost) > 0) {
             aiPricingNet.value = Math.round(Number(parsed.detected_net_cost));
         }
 
-        // Render into preview pane
         aiQuotePreviewPane.innerHTML = currentGeneratedProposalHtml;
         recalculateAiPricing();
 
@@ -361,6 +386,7 @@ Return valid JSON adhering to:
 }`;
 
     try {
+        const liveModel = await getLiveWorkingGroqModel();
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -368,7 +394,7 @@ Return valid JSON adhering to:
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: liveModel,
                 messages: [{ role: "user", content: prompt }],
                 response_format: { type: "json_object" },
                 temperature: 0.1
