@@ -53,6 +53,16 @@ function formatPremiumDate(dateStr) {
     }
 }
 
+// Sanitizer to eliminate WAF/Nginx 405 blocking characters
+function sanitizeInputText(str) {
+    if (!str) return "";
+    return str
+        .replace(/[\u200B-\u200D\uFEFF]/g, '') // remove zero-width spaces
+        .replace(/[\u00A0]/g, ' ')             // replace non-breaking spaces
+        .replace(/[^\x20-\x7E\n\t\r]/g, ' ')   // strip non-printable characters
+        .trim();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Core Elements
     addDayBtn = document.getElementById('add-day-btn');
@@ -446,7 +456,7 @@ async function handleFlightScreenshotPaste(e) {
             }
         });
 
-        const rawOcrText = ocrResult.data.text.trim();
+        const rawOcrText = sanitizeInputText(ocrResult.data.text);
         if (!rawOcrText) {
             if (flightPasteStatus) flightPasteStatus.innerText = "No readable text detected in screenshot.";
             return;
@@ -456,14 +466,12 @@ async function handleFlightScreenshotPaste(e) {
             flightPasteStatus.innerHTML = `<span class="text-indigo-400 animate-pulse">↻ Formatting route segments...</span>`;
         }
 
-        const prompt = `Extract all flight route segments from this OCR text into valid JSON.
+        const prompt = `Extract all flight route segments from this text into clean JSON.
 
 OCR Text:
-"""
 ${rawOcrText}
-"""
 
-SCHEMA:
+Output strictly in JSON:
 {
   "flights": [
     {
@@ -477,9 +485,7 @@ SCHEMA:
       "terminal_info": "string"
     }
   ]
-}
-
-Return ONLY valid JSON.`;
+}`;
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -490,7 +496,7 @@ Return ONLY valid JSON.`;
             body: JSON.stringify({
                 model: "llama-3.3-70b-versatile",
                 messages: [
-                    { role: "system", content: "You output JSON strictly without commentary." },
+                    { role: "system", content: "You output valid JSON directly with no commentary or markdown code fences." },
                     { role: "user", content: prompt }
                 ],
                 temperature: 0.1
@@ -723,7 +729,7 @@ function extractJsonRobustly(text) {
 }
 
 async function handleAutonomousAiBuild() {
-    const rawText = aiFreeRawText?.value?.trim();
+    const rawText = sanitizeInputText(aiFreeRawText?.value);
     if (!rawText) {
         alert("Please paste the vendor quotation or email text first.");
         return;
@@ -754,73 +760,58 @@ CRITICAL EXTRACTION RULES:
 10. "exclusions": Array of explicit exclusions.
 
 Vendor Text:
-"""
 ${rawText}
-"""
 
-Return ONLY a valid JSON object. Do not wrap in markdown fences.`;
+Return ONLY a valid JSON object.`;
 
-    const candidateModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
-    let parsedSuccess = false;
-    let lastError = null;
+    try {
+        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: "You output valid JSON directly without markdown fences or additional commentary." },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.1
+            })
+        });
 
-    for (const model of candidateModels) {
-        try {
-            if (aiCanvasStatus) aiCanvasStatus.innerText = `Parsing with ${model}...`;
-
-            const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${GROQ_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [
-                        { role: "system", content: "You output valid JSON directly without markdown fences or additional commentary." },
-                        { role: "user", content: prompt }
-                    ],
-                    temperature: 0.1
-                })
-            });
-
-            if (!response.ok) {
-                const errTxt = await response.text();
-                throw new Error(`${response.status}: ${errTxt}`);
-            }
-
-            const data = await response.json();
-            currentAiData = extractJsonRobustly(data.choices[0].message.content);
-
-            if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
-            if (currentAiData.pax_kids !== undefined) aiPaxKids.value = currentAiData.pax_kids;
-
-            activeSelectedOptionIndex = 0;
-            renderLeftOptionsPricingControls();
-            syncAllOptionsCalculations();
-
-            parsedSuccess = true;
-            if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
-            break;
-
-        } catch (err) {
-            console.warn(`Model ${model} failed:`, err);
-            lastError = err;
+        if (!response.ok) {
+            const errTxt = await response.text();
+            throw new Error(`API error (${response.status}): ${errTxt}`);
         }
-    }
 
-    if (!parsedSuccess) {
-        alert("Failed to build AI quotation: " + (lastError?.message || "All models busy"));
+        const data = await response.json();
+        currentAiData = extractJsonRobustly(data.choices[0].message.content);
+
+        // Populate Adult & Kid counts
+        if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
+        if (currentAiData.pax_kids !== undefined) aiPaxKids.value = currentAiData.pax_kids;
+
+        activeSelectedOptionIndex = 0;
+        renderLeftOptionsPricingControls();
+        syncAllOptionsCalculations();
+
+        if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to build AI quotation: " + err.message);
         if (aiCanvasStatus) aiCanvasStatus.innerText = "Error";
+    } finally {
+        aiFreeGenerateBtn.disabled = false;
+        aiFreeGenerateBtn.innerHTML = `<i data-lucide="wand-2" class="h-4 w-4"></i><span>Generate AI Quotation</span>`;
+        if (typeof lucide !== "undefined") lucide.createIcons();
     }
-
-    aiFreeGenerateBtn.disabled = false;
-    aiFreeGenerateBtn.innerHTML = `<i data-lucide="wand-2" class="h-4 w-4"></i><span>Generate AI Quotation</span>`;
-    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 async function handleAiRefinePrompt() {
-    const refineQuery = aiRefinePromptInput?.value?.trim();
+    const refineQuery = sanitizeInputText(aiRefinePromptInput?.value);
     if (!refineQuery) {
         alert("Please enter what changes or additions you'd like made.");
         return;
@@ -837,7 +828,7 @@ async function handleAiRefinePrompt() {
     const prompt = `Modify the current travel proposal JSON according to the user request.
 
 USER REQUEST:
-"${refineQuery}"
+${refineQuery}
 
 CURRENT JSON:
 ${JSON.stringify(currentAiData)}
