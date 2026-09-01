@@ -53,15 +53,14 @@ function formatPremiumDate(dateStr) {
     }
 }
 
-// Deep sanitizer to strip WAF/Cloudflare triggers (URLs, HTML tags, zero-width spaces)
-function sanitizeForCloudflareWaf(str) {
+function sanitizeText(str) {
     if (!str) return "";
     return str
-        .replace(/https?:\/\/[^\s]+/gi, '[web-portal]') // neutralize URLs that trip Cloudflare WAF
-        .replace(/<[^>]*>/g, ' ')                      // remove any HTML tags
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')         // remove zero-width chars
-        .replace(/[\u00A0]/g, ' ')                     // replace non-breaking space
-        .replace(/[^\x20-\x7E\n\t\r]/g, ' ')           // strip non-standard binary characters
+        .replace(/https?:\/\/[^\s]+/gi, '[portal-link]')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/[\u00A0]/g, ' ')
+        .replace(/[^\x20-\x7E\n\t\r]/g, ' ')
         .trim();
 }
 
@@ -458,7 +457,7 @@ async function handleFlightScreenshotPaste(e) {
             }
         });
 
-        const rawOcrText = sanitizeForCloudflareWaf(ocrResult.data.text);
+        const rawOcrText = sanitizeText(ocrResult.data.text);
         if (!rawOcrText) {
             if (flightPasteStatus) flightPasteStatus.innerText = "No readable text detected in screenshot.";
             return;
@@ -473,7 +472,7 @@ async function handleFlightScreenshotPaste(e) {
 OCR Text:
 ${rawOcrText}
 
-Output strictly in JSON:
+Output format:
 {
   "flights": [
     {
@@ -487,7 +486,9 @@ Output strictly in JSON:
       "terminal_info": "string"
     }
   ]
-}`;
+}
+
+Return JSON only.`;
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -496,7 +497,7 @@ Output strictly in JSON:
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "llama-3.1-8b-instant",
                 messages: [
                     { role: "system", content: "You output valid JSON directly with no commentary or markdown code fences." },
                     { role: "user", content: prompt }
@@ -731,7 +732,7 @@ function extractJsonRobustly(text) {
 }
 
 async function handleAutonomousAiBuild() {
-    const rawText = sanitizeForCloudflareWaf(aiFreeRawText?.value);
+    const rawText = sanitizeText(aiFreeRawText?.value);
     if (!rawText) {
         alert("Please paste the vendor quotation or email text first.");
         return;
@@ -741,30 +742,30 @@ async function handleAutonomousAiBuild() {
     aiFreeGenerateBtn.innerHTML = `<span class="animate-spin mr-2">↻</span> Building Proposal...`;
     if (aiCanvasStatus) aiCanvasStatus.innerText = "Extracting multi-option hotels & itinerary...";
 
-    const prompt = `You are a travel quotation parser. Extract ALL trip details, hotel options, and itineraries from this supplier quote into valid JSON.
+    const prompt = `Extract all holiday proposal details, hotel options, and itineraries from this quote into valid JSON.
 
-CRITICAL EXTRACTION RULES:
-1. "title": Clean vacation title (e.g. "Bali Tropical Escape (Kuta & Ubud)").
-2. "destination": Destination name (e.g. Bali, Indonesia).
+CRITICAL RULES:
+1. "title": Holiday title.
+2. "destination": Destination name.
 3. "travel_date": Date string or "03 June, 2026".
-4. "pax_adults": Number of adults (e.g. 2).
-5. "pax_kids": Number of children if present (else 0).
-6. "vehicle_standard": Fleet used (e.g. "Private AC Suzuki APV / Toyota Avanza").
-7. "hotel_options": Array of ALL hotel tier options mentioned (Option 1, Option 2, Option 3, etc.).
-   Each option must have:
-   - "option_name": Clean descriptive title (e.g. "Option 1 (3 Star Standard)", "Option 2 (4 Star Premium)", "Option 3 (4 Star Pool Villa)")
-   - "per_person_usd": Numeric USD price per person if specified (e.g. 309, 314, 355)
-   - "per_person_inr": USD price multiplied by 87 (e.g. 26883, 27318, 30885)
-   - "kid_net_inr": Child rate in INR (if mentioned, else 0)
-   - "hotels": Array of hotels in that option [{ "city": "Kuta", "hotel_name": "Zia Hotel Kuta", "star_rating": "3 Star", "room_type": "Superior Room", "meal_plan": "Bed and Breakfast", "nights": 3 }]
-8. "itinerary_days": Array of all day descriptions with "title" and "description".
+4. "pax_adults": Number of adults.
+5. "pax_kids": Number of children (0 if none).
+6. "vehicle_standard": Fleet vehicle.
+7. "hotel_options": Array of ALL hotel tier options.
+   Each option has:
+   - "option_name": e.g. "Option 1 (3 Star Standard)", "Option 2 (4 Star Premium)", "Option 3 (4 Star Pool Villa)"
+   - "per_person_usd": Numeric USD price per person if specified (309, 314, 355)
+   - "per_person_inr": USD price multiplied by 87 (26883, 27318, 30885)
+   - "kid_net_inr": Child rate in INR (0 if not specified)
+   - "hotels": Array of hotel properties [{ "city": "Kuta", "hotel_name": "Zia Hotel Kuta", "star_rating": "3 Star", "room_type": "Superior Room", "meal_plan": "Bed and Breakfast", "nights": 3 }]
+8. "itinerary_days": Array of day breakdowns [{ "title": "Headline", "description": "Details" }].
 9. "inclusions": Array of explicit inclusions.
 10. "exclusions": Array of explicit exclusions.
 
 Vendor Text:
 ${rawText}
 
-Return ONLY a valid JSON object.`;
+Return valid JSON only.`;
 
     try {
         const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
@@ -774,9 +775,9 @@ Return ONLY a valid JSON object.`;
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "llama-3.1-8b-instant",
                 messages: [
-                    { role: "system", content: "You output valid JSON directly without markdown fences or additional commentary." },
+                    { role: "system", content: "You output valid JSON directly with zero conversational filler or markdown fences." },
                     { role: "user", content: prompt }
                 ],
                 temperature: 0.1
@@ -813,7 +814,7 @@ Return ONLY a valid JSON object.`;
 }
 
 async function handleAiRefinePrompt() {
-    const refineQuery = sanitizeForCloudflareWaf(aiRefinePromptInput?.value);
+    const refineQuery = sanitizeText(aiRefinePromptInput?.value);
     if (!refineQuery) {
         alert("Please enter what changes or additions you'd like made.");
         return;
@@ -845,7 +846,7 @@ Return ONLY the updated valid JSON adhering to the exact same schema.`;
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "llama-3.1-8b-instant",
                 messages: [
                     { role: "system", content: "You output JSON directly without markdown fences." },
                     { role: "user", content: prompt }
