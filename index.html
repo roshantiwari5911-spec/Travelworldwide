@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travel World Wide - CRM Platform</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,13 +22,9 @@
             }
         }
     </script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Supabase JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- html2pdf.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Tesseract.js for In-Browser Flight OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         .hidden-workspace { display: none !important; }
@@ -90,7 +85,6 @@
                 </div>
             </div>
 
-            <!-- NAVIGATION TABS -->
             <nav class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 p-1 rounded-xl">
                 <button id="tab-itinerary" class="text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition">Quotation Builder</button>
                 <button id="tab-customers" class="text-[11px] bg-white/5 text-gray-300 hover:bg-white/10 font-semibold px-3 py-1.5 rounded-lg transition">Customer Directory</button>
@@ -131,9 +125,7 @@
             <div class="text-[10px] text-slate-500 text-center font-mono">Travel World Wide Cloud v2.5</div>
         </div>
 
-        <!-- ============================================================== -->
-        <!-- MODULE 1: MANUAL ITINERARY BUILDER                             -->
-        <!-- ============================================================== -->
+        <!-- MODULE 1: MANUAL ITINERARY BUILDER -->
         <div id="module-itinerary" class="hidden flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
             <div class="lg:col-span-6 space-y-6">
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
@@ -228,9 +220,7 @@
             </div>
         </div>
 
-        <!-- ============================================================== -->
-        <!-- MODULE 2: CUSTOMER DIRECTORY                                   -->
-        <!-- ============================================================== -->
+        <!-- MODULE 2: CUSTOMER DIRECTORY -->
         <div id="module-customers" class="hidden flex-1 p-6 max-w-[1400px] w-full mx-auto space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-4">
                 <h3 class="text-sm font-bold text-white uppercase tracking-wider">Quick Client Onboarding</h3>
@@ -259,9 +249,7 @@
             </div>
         </div>
 
-        <!-- ============================================================== -->
-        <!-- MODULE 3: HOTEL VOUCHER BUILDER                                -->
-        <!-- ============================================================== -->
+        <!-- MODULE 3: HOTEL VOUCHER BUILDER -->
         <div id="module-hotels" class="hidden flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
             <div class="lg:col-span-6 space-y-6">
                 <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
@@ -285,7 +273,7 @@
         </div>
 
         <!-- ============================================================== -->
-        <!-- MODULE 4: AUTONOMOUS AI BUILD (WITH OCR VISION & PER-PAX)      -->
+        <!-- MODULE 4: AUTONOMOUS AI BUILD (WITH MULTI-OPTION PRICING)       -->
         <!-- ============================================================== -->
         <div id="module-ai-build" class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto">
             
@@ -300,7 +288,7 @@
                         </h3>
                         <span class="text-[10px] text-slate-500 font-mono">Any Text / USD / INR</span>
                     </div>
-                    <textarea id="ai-free-raw-text" rows="6" placeholder="Paste ANY quotation email, WhatsApp quote, hotel list, or itinerary notes here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 transition font-mono"></textarea>
+                    <textarea id="ai-free-raw-text" rows="5" placeholder="Paste ANY quotation email, multi-option hotel quote, or itinerary notes here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 transition font-mono"></textarea>
                     
                     <button type="button" id="ai-free-generate-btn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold py-3 rounded-xl shadow-lg shadow-purple-600/25 transition flex items-center justify-center gap-2">
                         <i data-lucide="wand-2" class="h-4 w-4"></i>
@@ -317,7 +305,7 @@
                         <span class="text-[10px] text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded font-mono">Direct Paste (⌘ + V)</span>
                     </div>
                     
-                    <div id="flight-paste-dropzone" tabindex="0" class="border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 bg-slate-950/80 rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <div id="flight-paste-dropzone" tabindex="0" class="border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 bg-slate-950/80 rounded-xl p-3.5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500">
                         <div class="p-2 bg-cyan-500/10 rounded-full text-cyan-400">
                             <i data-lucide="image-plus" class="h-5 w-5"></i>
                         </div>
@@ -325,8 +313,7 @@
                         <span id="flight-paste-status" class="text-[10px] text-slate-500">Instant in-browser OCR reading</span>
                     </div>
 
-                    <!-- Flight Airfare Controls -->
-                    <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div class="grid grid-cols-2 gap-3 pt-1">
                         <div>
                             <span class="text-[10px] text-slate-400 block mb-1">Airfare (Per Person ₹)</span>
                             <input type="number" id="ai-airfare-per-pax" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono">
@@ -338,11 +325,11 @@
                     </div>
                 </div>
 
-                <!-- 3. DETAILED PER-PERSON & KIDS COMMERCIAL MARKUP CONTROLS -->
+                <!-- 3. MULTI-OPTION PRICING & COMMERCIAL MARKUP MANAGER -->
                 <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                            <i data-lucide="badge-percent" class="h-4 w-4"></i> Costing & Pax Breakdown
+                            <i data-lucide="badge-percent" class="h-4 w-4"></i> Multi-Option Pricing Controls
                         </h3>
                         <div class="flex bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-[11px] font-semibold">
                             <button type="button" id="markup-mode-pct-btn" class="px-2.5 py-1 bg-indigo-600 text-white rounded-md transition">% Margin</button>
@@ -350,45 +337,59 @@
                         </div>
                     </div>
 
-                    <!-- Adult & Kids Controls -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <!-- Pax Config & Global Markup -->
+                    <div class="grid grid-cols-3 gap-2.5 text-xs">
                         <div>
                             <span class="text-[10px] text-slate-400 block mb-1">Adults (Pax)</span>
-                            <input type="number" id="ai-pax-adults" value="2" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
-                        </div>
-                        <div>
-                            <span class="text-[10px] text-slate-400 block mb-1">Adult Net (₹ / Pax)</span>
-                            <input type="number" id="ai-net-per-adult" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
+                            <input type="number" id="ai-pax-adults" value="2" min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold">
                         </div>
                         <div>
                             <span class="text-[10px] text-slate-400 block mb-1">Children (Kids)</span>
-                            <input type="number" id="ai-pax-kids" value="0" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
+                            <input type="number" id="ai-pax-kids" value="0" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold">
                         </div>
                         <div>
-                            <span class="text-[10px] text-slate-400 block mb-1">Kid Net (₹ / Kid)</span>
-                            <input type="number" id="ai-net-per-kid" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                            <span class="text-[10px] text-slate-400 block mb-1">Combined Net Total (₹)</span>
-                            <input type="number" id="ai-pricing-net" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold">
-                        </div>
-                        <div>
-                            <span id="ai-markup-label" class="text-[10px] text-slate-400 block mb-1">Markup Percentage (%)</span>
+                            <span id="ai-markup-label" class="text-[10px] text-slate-400 block mb-1">Global Markup (%)</span>
                             <input type="number" id="ai-pricing-markup-val" value="15" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-indigo-300 font-mono font-bold">
                         </div>
                     </div>
 
+                    <!-- DYNAMIC MULTI-OPTION TIERS CONTAINER -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-1">
+                            <span>Package Tier Options</span>
+                            <span>Net Cost / Adult</span>
+                        </div>
+                        <div id="ai-options-pricing-list" class="space-y-2.5">
+                            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80 text-xs space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-white">Default Package Rate</span>
+                                    <span class="text-[10px] text-slate-500 font-mono">Option 1</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span class="text-[9px] text-slate-400 block mb-0.5">Adult Net (₹ / Pax)</span>
+                                        <input type="number" id="ai-net-per-adult" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono">
+                                    </div>
+                                    <div>
+                                        <span class="text-[9px] text-slate-400 block mb-0.5">Kid Net (₹ / Kid)</span>
+                                        <input type="number" id="ai-net-per-kid" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden input to maintain Supabase compatibility -->
+                    <input type="hidden" id="ai-pricing-net" value="0">
+
                     <!-- Live Breakdown Summary Card -->
-                    <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
+                    <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5 text-xs font-mono">
                         <div class="flex justify-between items-center text-slate-400">
-                            <span>Quoted Per Adult:</span>
+                            <span>Selected Tier Quoted / Adult:</span>
                             <strong id="ai-per-adult-quoted" class="text-indigo-300">₹0</strong>
                         </div>
                         <div id="ai-kids-summary-row" class="hidden flex justify-between items-center text-slate-400">
-                            <span>Quoted Per Child:</span>
+                            <span>Quoted / Child:</span>
                             <strong id="ai-per-kid-quoted" class="text-amber-300">₹0</strong>
                         </div>
                         <div class="flex justify-between items-center pt-2 border-t border-slate-800">
@@ -408,7 +409,7 @@
                         <i data-lucide="message-square-code" class="h-4 w-4"></i> Prompt Changes / Customization
                     </h3>
                     <div class="flex gap-2">
-                        <input type="text" id="ai-refine-prompt-input" placeholder="e.g. Add Sigiriya entry fees to inclusions, make tone luxury..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                        <input type="text" id="ai-refine-prompt-input" placeholder="e.g. Add Tanah Lot sunset on Day 4, include floating breakfast..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
                         <button type="button" id="ai-refine-submit-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-cyan-600/20">
                             <i data-lucide="send" class="h-3.5 w-3.5"></i>
                             <span>Refine</span>
