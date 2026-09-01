@@ -325,11 +325,11 @@ function renderLeftOptionsPricingControls() {
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <span class="text-[9px] text-slate-400 block mb-0.5">Adult Net (₹ / Pax)</span>
-                        <input type="number" id="ai-net-per-adult" value="${Math.round(currentAiData?.adult_net_cost_per_person || 0)}" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="currentAiData.adult_net_cost_per_person = parseFloat(this.value)||0; syncAllOptionsCalculations();">
+                        <input type="number" id="ai-net-per-adult" value="${Math.round(currentAiData?.adult_net_cost_per_person || 0)}" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="if(currentAiData){currentAiData.adult_net_cost_per_person = parseFloat(this.value)||0;} syncAllOptionsCalculations();">
                     </div>
                     <div>
                         <span class="text-[9px] text-slate-400 block mb-0.5">Kid Net (₹ / Kid)</span>
-                        <input type="number" id="ai-net-per-kid" value="${Math.round(currentAiData?.kid_net_cost_per_person || 0)}" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="currentAiData.kid_net_cost_per_person = parseFloat(this.value)||0; syncAllOptionsCalculations();">
+                        <input type="number" id="ai-net-per-kid" value="${Math.round(currentAiData?.kid_net_cost_per_person || 0)}" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="if(currentAiData){currentAiData.kid_net_cost_per_person = parseFloat(this.value)||0;} syncAllOptionsCalculations();">
                     </div>
                 </div>
             </div>
@@ -363,7 +363,6 @@ function syncAllOptionsCalculations() {
 
     currentAiMarkupVal = markup;
 
-    // Calculate quoted rates for ALL options
     if (currentAiData?.hotel_options && currentAiData.hotel_options.length > 0) {
         currentAiData.hotel_options.forEach((opt) => {
             const adultNet = parseFloat(opt.per_person_inr) || 0;
@@ -390,12 +389,11 @@ function syncAllOptionsCalculations() {
             opt.calculated_grand_total = landQuoted + airfare;
         });
 
-        // Set active selected tier metrics in summary cards
         const activeOpt = currentAiData.hotel_options[activeSelectedOptionIndex] || currentAiData.hotel_options[0];
-        if (aiPerAdultQuoted) aiPerAdultQuoted.innerText = `₹${activeOpt.calculated_per_adult_quoted.toLocaleString('en-IN')}`;
-        if (aiPerKidQuoted) aiPerKidQuoted.innerText = `₹${activeOpt.calculated_per_kid_quoted.toLocaleString('en-IN')}`;
-        if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${activeOpt.calculated_margin.toLocaleString('en-IN')}`;
-        if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${activeOpt.calculated_grand_total.toLocaleString('en-IN')}/-`;
+        if (aiPerAdultQuoted) aiPerAdultQuoted.innerText = `₹${(activeOpt.calculated_per_adult_quoted || 0).toLocaleString('en-IN')}`;
+        if (aiPerKidQuoted) aiPerKidQuoted.innerText = `₹${(activeOpt.calculated_per_kid_quoted || 0).toLocaleString('en-IN')}`;
+        if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${(activeOpt.calculated_margin || 0).toLocaleString('en-IN')}`;
+        if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${(activeOpt.calculated_grand_total || 0).toLocaleString('en-IN')}/-`;
         
         currentAiNetCost = activeOpt.calculated_grand_total - activeOpt.calculated_margin;
     } else {
@@ -437,7 +435,6 @@ function syncAllOptionsCalculations() {
         aiKidsSummaryRow.classList.add('hidden');
     }
 
-    // Re-render the live document canvas with the updated option figures
     if (aiQuotePreviewPane && currentAiData) {
         aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
     }
@@ -569,7 +566,7 @@ Return ONLY valid JSON.`;
 }
 
 // ==============================================================
-// MULTI-OPTION PROPOSAL RENDERER WITH INVESTMENT SUMMARY
+// PROPOSAL RENDERER (WITH REQUESTED TITLES & CLEAN TABLE LAYOUT)
 // ==============================================================
 function renderAiProposalDocument(data) {
     if (!data) return '';
@@ -581,9 +578,8 @@ function renderAiProposalDocument(data) {
     const kids = parseInt(aiPaxKids?.value) || 0;
     const pax = adults + kids;
     const vehicle = data.vehicle_standard || "Private Dedicated Fleet";
-    const airfare = parseFloat(aiAirfareTotal?.value) || 0;
 
-    // 1. Aviation Matrices
+    // 1. Flight Schedule
     let flHtml = '';
     if (Array.isArray(data.flights) && data.flights.length > 0) {
         let fList = data.flights.map(fl => `
@@ -598,7 +594,7 @@ function renderAiProposalDocument(data) {
                 ${fl.terminal_info ? `<div style="font-size:10.5px; color:#64748b; margin-top:2px;">📍 ${fl.terminal_info}</div>` : ''}
             </div>
         `).join('');
-        flHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0284c7;">I. Aviation Matrices & Flight Schedule</h3>${fList}</div>`;
+        flHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0284c7;">Flight Schedule</h3>${fList}</div>`;
     }
 
     // 2. Accommodation Details
@@ -641,9 +637,9 @@ function renderAiProposalDocument(data) {
             `;
         }).join('');
 
-        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">II. Accommodation Details</h3>${optionsCards}</div>`;
+        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">Accommodation Details</h3>${optionsCards}</div>`;
 
-        // Multi-Tier Price Comparison Table for PDF
+        // Total package pricing summary table
         let pricingRows = data.hotel_options.map(opt => `
             <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
                 <td style="padding: 9px 8px; font-weight: 700; color: #0f172a;">${opt.option_name || 'Option Tier'}</td>
@@ -655,14 +651,14 @@ function renderAiProposalDocument(data) {
 
         pricingSummaryTableHtml = `
             <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                <h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">IV. Investment Summary Matrix</h3>
+                <h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">Total package pricing summary</h3>
                 <table style="width: 100%; border-collapse: collapse; background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <thead>
                         <tr style="background: #0f172a; color: #ffffff; font-size: 10px; text-transform: uppercase;">
-                            <th style="padding: 7px 8px; text-align: left;">Selected Package Option</th>
-                            <th style="padding: 7px 8px; text-align: center;">Per Adult Investment</th>
-                            ${kids > 0 ? `<th style="padding: 7px 8px; text-align: center;">Per Child Investment</th>` : ''}
-                            <th style="padding: 7px 8px; text-align: right;">Grand All-Inclusive</th>
+                            <th style="padding: 7px 8px; text-align: left;">SELECTED PACKAGE OPTION</th>
+                            <th style="padding: 7px 8px; text-align: center;">price per person</th>
+                            ${kids > 0 ? `<th style="padding: 7px 8px; text-align: center;">KIDS PRICE</th>` : ''}
+                            <th style="padding: 7px 8px; text-align: right;">Total Amount</th>
                         </tr>
                     </thead>
                     <tbody>${pricingRows}</tbody>
@@ -679,7 +675,7 @@ function renderAiProposalDocument(data) {
                 <td style="text-align: center; color: #4f46e5; font-weight: 700; padding: 9px 8px;">${h.nights || 1} N</td>
             </tr>
         `).join('');
-        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">II. Accommodation Details</h3><table style="width: 100%; border-collapse: collapse; font-size: 11px;"><thead><tr style="background: #f8fafc; color: #475569;"><th style="padding: 6px 8px; text-align: left;">Resort Property</th><th style="padding: 6px 8px; text-align: center;">Location</th><th style="padding: 6px 8px; text-align: center;">Meal Plan</th><th style="padding: 6px 8px; text-align: center;">Duration</th></tr></thead><tbody>${hRows}</tbody></table></div>`;
+        htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">Accommodation Details</h3><table style="width: 100%; border-collapse: collapse; font-size: 11px;"><thead><tr style="background: #f8fafc; color: #475569;"><th style="padding: 6px 8px; text-align: left;">Resort Property</th><th style="padding: 6px 8px; text-align: center;">Location</th><th style="padding: 6px 8px; text-align: center;">Meal Plan</th><th style="padding: 6px 8px; text-align: center;">Duration</th></tr></thead><tbody>${hRows}</tbody></table></div>`;
     }
 
     // 3. Day-Wise Itinerary
@@ -691,7 +687,7 @@ function renderAiProposalDocument(data) {
                 <p style="margin: 0; font-size: 11px; color: #475569; line-height: 1.6;">${d.description || ''}</p>
             </div>
         `).join('');
-        dyHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">III. Day-Wise Itinerary</h3>${dList}</div>`;
+        dyHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">Day-Wise Itinerary</h3>${dList}</div>`;
     }
 
     const incList = Array.isArray(data.inclusions) ? data.inclusions.map(t => `<li style="list-style-type: none; padding-left: 14px; position: relative; margin-bottom: 4px;"><span style="position: absolute; left: 0; color: #10b981; font-weight: bold;">✓</span>${t}</li>`).join('') : '';
@@ -734,26 +730,21 @@ function renderAiProposalDocument(data) {
             </div>
 
             ${pricingSummaryTableHtml}
-
-            <div style="background: #0f172a; color: #ffffff; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
-                <div>
-                    <span style="font-size: 10px; color: #94a3b8; display: block; font-weight: 600;">ACTIVE OPTION QUOTED INVESTMENT</span>
-                    <span id="ai-rendered-pax-pricing-tag" style="font-size: 10.5px; color: #38bdf8; font-family: monospace;">
-                        (Option 0${activeSelectedOptionIndex + 1} Selected)
-                    </span>
-                </div>
-                <div style="font-size: 18px; font-weight: 800; color: #10b981; font-family: monospace;" id="ai-rendered-grand-price">₹0/-</div>
-            </div>
         </div>
     `;
 }
 
 function extractJsonRobustly(text) {
+    if (!text) return {};
     let cleaned = text.trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-        cleaned = jsonMatch[0];
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    
+    const startIdx = cleaned.indexOf('{');
+    const endIdx = cleaned.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        cleaned = cleaned.substring(startIdx, endIdx + 1);
     }
+    
     return JSON.parse(cleaned);
 }
 
@@ -799,7 +790,7 @@ Return ONLY a valid JSON object. Do not wrap in markdown fences.`;
         const liveModel = await getLiveWorkingGroqModel();
         if (aiCanvasStatus) aiCanvasStatus.innerText = `Parsing with ${liveModel}...`;
 
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -871,7 +862,7 @@ Return ONLY the updated valid JSON adhering to the exact same schema.`;
 
     try {
         const liveModel = await getLiveWorkingGroqModel();
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1186,9 +1177,9 @@ function compileItineraryHTML() {
                 <div><strong>Departure:</strong> ${formatPremiumDate(date)}</div><div><strong>Guests:</strong> 👥 ${pax} Adults</div>
                 <div style="grid-column:span 2;"><strong>Ground Fleet:</strong> 🚘 ${vehicle}</div>
             </div>
-            ${flHtml ? `<div style="margin-bottom:20px;"><h3 style="font-size:11px; text-transform:uppercase; border-bottom:1.5px solid #111827; padding-bottom:4px;">I. Aviation Matrices</h3>${flHtml}</div>` : ''}
-            <div style="margin-bottom:20px;"><h3 style="font-size:11px; text-transform:uppercase; border-bottom:1.5px solid #111827; padding-bottom:4px;">II. Accommodation Details</h3><table style="width:100%; border-collapse:collapse; font-size:11px;"><thead><tr style="background:#f3f4f6; color:#4b5563;"><th style="padding:6px;">Resort Property</th><th style="padding:6px; text-align:center;">Check-In</th><th style="padding:6px; text-align:center;">Check-Out</th><th style="padding:6px; text-align:center;">Duration</th></tr></thead><tbody>${htHtml || '<tr><td colspan="4" style="text-align:center; padding:10px; color:#9ca3af;">No accommodations added</td></tr>'}</tbody></table></div>
-            ${dyHtml ? `<div style="margin-bottom:20px;"><h3 style="font-size:11px; text-transform:uppercase; border-bottom:1.5px solid #111827; padding-bottom:4px;">III. Day-Wise Itinerary</h3>${dyHtml}</div>` : ''}
+            ${flHtml ? `<div style="margin-bottom:20px;"><h3 style="font-size:11px; text-transform:uppercase; border-bottom:1.5px solid #111827; padding-bottom:4px;">Flight Schedule</h3>${flHtml}</div>` : ''}
+            <div style="margin-bottom:20px;"><h3 style="font-size:11px; text-transform:uppercase; border-bottom:1.5px solid #111827; padding-bottom:4px;">Accommodation Details</h3><table style="width:100%; border-collapse:collapse; font-size:11px;"><thead><tr style="background:#f3f4f6; color:#4b5563;"><th style="padding:6px;">Resort Property</th><th style="padding:6px; text-align:center;">Check-In</th><th style="padding:6px; text-align:center;">Check-Out</th><th style="padding:6px; text-align:center;">Duration</th></tr></thead><tbody>${htHtml || '<tr><td colspan="4" style="text-align:center; padding:10px; color:#9ca3af;">No accommodations added</td></tr>'}</tbody></table></div>
+            ${dyHtml ? `<div style="margin-bottom:20px;"><h3 style="font-size:11px; text-transform:uppercase; border-bottom:1.5px solid #111827; padding-bottom:4px;">Day-Wise Itinerary</h3>${dyHtml}</div>` : ''}
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; border-top:1px solid #e5e7eb; padding-top:14px; margin-bottom:20px;">
                 <div><h4 style="font-size:10px; color:#10b981; margin:0 0 6px 0;">✓ Inclusions</h4><ul style="font-size:10.5px; color:#4b5563; padding:0; margin:0;">${inc}</ul></div>
                 <div><h4 style="font-size:10px; color:#ef4444; margin:0 0 6px 0;">✕ Exclusions</h4><ul style="font-size:10.5px; color:#4b5563; padding:0; margin:0;">${exc}</ul></div>
