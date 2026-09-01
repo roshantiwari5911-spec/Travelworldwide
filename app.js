@@ -53,13 +53,15 @@ function formatPremiumDate(dateStr) {
     }
 }
 
-// Sanitizer to eliminate WAF/Nginx 405 blocking characters
-function sanitizeInputText(str) {
+// Deep sanitizer to strip WAF/Cloudflare triggers (URLs, HTML tags, zero-width spaces)
+function sanitizeForCloudflareWaf(str) {
     if (!str) return "";
     return str
-        .replace(/[\u200B-\u200D\uFEFF]/g, '') // remove zero-width spaces
-        .replace(/[\u00A0]/g, ' ')             // replace non-breaking spaces
-        .replace(/[^\x20-\x7E\n\t\r]/g, ' ')   // strip non-printable characters
+        .replace(/https?:\/\/[^\s]+/gi, '[web-portal]') // neutralize URLs that trip Cloudflare WAF
+        .replace(/<[^>]*>/g, ' ')                      // remove any HTML tags
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')         // remove zero-width chars
+        .replace(/[\u00A0]/g, ' ')                     // replace non-breaking space
+        .replace(/[^\x20-\x7E\n\t\r]/g, ' ')           // strip non-standard binary characters
         .trim();
 }
 
@@ -456,7 +458,7 @@ async function handleFlightScreenshotPaste(e) {
             }
         });
 
-        const rawOcrText = sanitizeInputText(ocrResult.data.text);
+        const rawOcrText = sanitizeForCloudflareWaf(ocrResult.data.text);
         if (!rawOcrText) {
             if (flightPasteStatus) flightPasteStatus.innerText = "No readable text detected in screenshot.";
             return;
@@ -729,7 +731,7 @@ function extractJsonRobustly(text) {
 }
 
 async function handleAutonomousAiBuild() {
-    const rawText = sanitizeInputText(aiFreeRawText?.value);
+    const rawText = sanitizeForCloudflareWaf(aiFreeRawText?.value);
     if (!rawText) {
         alert("Please paste the vendor quotation or email text first.");
         return;
@@ -811,7 +813,7 @@ Return ONLY a valid JSON object.`;
 }
 
 async function handleAiRefinePrompt() {
-    const refineQuery = sanitizeInputText(aiRefinePromptInput?.value);
+    const refineQuery = sanitizeForCloudflareWaf(aiRefinePromptInput?.value);
     if (!refineQuery) {
         alert("Please enter what changes or additions you'd like made.");
         return;
