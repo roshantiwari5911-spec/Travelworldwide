@@ -200,31 +200,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ==============================================================
-// DYNAMIC GROQ MODEL SELECTOR
-// ==============================================================
-async function getLiveWorkingGroqModel() {
-    try {
-        const res = await fetch("https://api.groq.com/openai/v1/models", {
-            headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            const valid = data.data
-                .map(m => m.id)
-                .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("vision") && !id.includes("orpheus") && !id.includes("canopylabs"));
-            
-            if (valid.length > 0) {
-                const preferred = valid.find(id => id.includes("llama-3.1-8b") || id.includes("llama3-8b") || id.includes("mixtral"));
-                return preferred || valid[0];
-            }
-        }
-    } catch (e) {
-        console.warn("Live text model query failed:", e);
-    }
-    return "llama-3.1-8b-instant";
-}
-
-// ==============================================================
 // MODULE TAB SWITCHING
 // ==============================================================
 function switchCrmModule(m) {
@@ -481,9 +456,9 @@ async function handleFlightScreenshotPaste(e) {
             flightPasteStatus.innerHTML = `<span class="text-indigo-400 animate-pulse">↻ Formatting route segments...</span>`;
         }
 
-        const prompt = `You are a flight schedule parser. Extract flight routing from this OCR text into valid JSON.
+        const prompt = `Extract all flight route segments from this OCR text into valid JSON.
 
-OCR Text from booking screenshot:
+OCR Text:
 """
 ${rawOcrText}
 """
@@ -492,21 +467,20 @@ SCHEMA:
 {
   "flights": [
     {
-      "flight_number": "e.g. 6E-5184",
-      "route": "e.g. Mumbai (BOM) → Bengaluru (BLR)",
-      "dep_date": "e.g. Sat, Oct 17th 2026",
-      "dep_time": "12:30",
-      "arr_date": "e.g. Sat, Oct 17th 2026",
-      "arr_time": "14:25",
-      "duration": "1h 55m",
-      "terminal_info": "e.g. Mumbai Terminal 1 → Bengaluru Terminal 1"
+      "flight_number": "string",
+      "route": "string",
+      "dep_date": "string",
+      "dep_time": "string",
+      "arr_date": "string",
+      "arr_time": "string",
+      "duration": "string",
+      "terminal_info": "string"
     }
   ]
 }
 
 Return ONLY valid JSON.`;
 
-        const liveModel = await getLiveWorkingGroqModel();
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -514,7 +488,7 @@ Return ONLY valid JSON.`;
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: liveModel,
+                model: "llama-3.3-70b-versatile",
                 messages: [
                     { role: "system", content: "You output JSON strictly without commentary." },
                     { role: "user", content: prompt }
@@ -566,7 +540,7 @@ Return ONLY valid JSON.`;
 }
 
 // ==============================================================
-// PROPOSAL RENDERER (WITH REQUESTED TITLES & CLEAN TABLE LAYOUT)
+// PROPOSAL RENDERER (CLEAN HEADERS & FORMATTING)
 // ==============================================================
 function renderAiProposalDocument(data) {
     if (!data) return '';
@@ -786,53 +760,63 @@ ${rawText}
 
 Return ONLY a valid JSON object. Do not wrap in markdown fences.`;
 
-    try {
-        const liveModel = await getLiveWorkingGroqModel();
-        if (aiCanvasStatus) aiCanvasStatus.innerText = `Parsing with ${liveModel}...`;
+    const candidateModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+    let parsedSuccess = false;
+    let lastError = null;
 
-        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: liveModel,
-                messages: [
-                    { role: "system", content: "You output valid JSON directly without markdown fences or additional commentary." },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.1
-            })
-        });
+    for (const model of candidateModels) {
+        try {
+            if (aiCanvasStatus) aiCanvasStatus.innerText = `Parsing with ${model}...`;
 
-        if (!response.ok) {
-            const errBody = await response.text();
-            throw new Error(`AI generation failed (${response.status}): ${errBody}`);
+            const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        { role: "system", content: "You output valid JSON directly without markdown fences or additional commentary." },
+                        { role: "user", content: prompt }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (!response.ok) {
+                const errTxt = await response.text();
+                throw new Error(`${response.status}: ${errTxt}`);
+            }
+
+            const data = await response.json();
+            currentAiData = extractJsonRobustly(data.choices[0].message.content);
+
+            if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
+            if (currentAiData.pax_kids !== undefined) aiPaxKids.value = currentAiData.pax_kids;
+
+            activeSelectedOptionIndex = 0;
+            renderLeftOptionsPricingControls();
+            syncAllOptionsCalculations();
+
+            parsedSuccess = true;
+            if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
+            break;
+
+        } catch (err) {
+            console.warn(`Model ${model} failed:`, err);
+            lastError = err;
         }
-
-        const data = await response.json();
-        currentAiData = extractJsonRobustly(data.choices[0].message.content);
-
-        // Populate Adult & Kid counts
-        if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
-        if (currentAiData.pax_kids !== undefined) aiPaxKids.value = currentAiData.pax_kids;
-
-        activeSelectedOptionIndex = 0;
-        renderLeftOptionsPricingControls();
-        syncAllOptionsCalculations();
-
-        if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
-
-    } catch (err) {
-        console.error(err);
-        alert("Failed to build AI quotation: " + err.message);
-        if (aiCanvasStatus) aiCanvasStatus.innerText = "Error";
-    } finally {
-        aiFreeGenerateBtn.disabled = false;
-        aiFreeGenerateBtn.innerHTML = `<i data-lucide="wand-2" class="h-4 w-4"></i><span>Generate AI Quotation</span>`;
-        if (typeof lucide !== "undefined") lucide.createIcons();
     }
+
+    if (!parsedSuccess) {
+        alert("Failed to build AI quotation: " + (lastError?.message || "All models busy"));
+        if (aiCanvasStatus) aiCanvasStatus.innerText = "Error";
+    }
+
+    aiFreeGenerateBtn.disabled = false;
+    aiFreeGenerateBtn.innerHTML = `<i data-lucide="wand-2" class="h-4 w-4"></i><span>Generate AI Quotation</span>`;
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 async function handleAiRefinePrompt() {
@@ -861,7 +845,6 @@ ${JSON.stringify(currentAiData)}
 Return ONLY the updated valid JSON adhering to the exact same schema.`;
 
     try {
-        const liveModel = await getLiveWorkingGroqModel();
         const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
             method: "POST",
             headers: {
@@ -869,7 +852,7 @@ Return ONLY the updated valid JSON adhering to the exact same schema.`;
                 "Authorization": `Bearer ${GROQ_API_KEY}`
             },
             body: JSON.stringify({
-                model: liveModel,
+                model: "llama-3.3-70b-versatile",
                 messages: [
                     { role: "system", content: "You output JSON directly without markdown fences." },
                     { role: "user", content: prompt }
