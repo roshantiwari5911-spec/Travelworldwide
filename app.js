@@ -26,14 +26,15 @@ let aiFreeRawText, aiFreeGenerateBtn, aiPricingNet, aiPricingMarkupVal, aiMarkup
 let markupModePctBtn, markupModeFlatBtn, aiPricingMarginDisplay, aiPricingGrandTotal;
 let aiRefinePromptInput, aiRefineSubmitBtn, aiSaveCloudBtn, aiExportPdfBtn, aiQuotePreviewPane, aiCanvasStatus;
 
-// Per-Person & Kids Breakdown Elements
+// Per-Person & Kids & Multi-Option Elements
 let aiPaxAdults, aiNetPerAdult, aiPaxKids, aiNetPerKid, aiPerAdultQuoted, aiPerKidQuoted, aiKidsSummaryRow;
-let aiAirfarePerPax, aiAirfareTotal, flightPasteDropzone, flightPasteStatus;
+let aiAirfarePerPax, aiAirfareTotal, flightPasteDropzone, flightPasteStatus, aiOptionsPricingList;
 
 let currentAiMarkupType = 'pct'; // 'pct' | 'flat'
 let currentAiNetCost = 0;
 let currentAiMarkupVal = 15;
 let currentAiData = null;
+let activeSelectedOptionIndex = 0;
 
 const coreInputIds = [
     'pkg-title', 'pkg-destination', 'pkg-date', 'pkg-pax', 'pkg-vehicle', 
@@ -122,6 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     aiAirfareTotal = document.getElementById('ai-airfare-total');
     flightPasteDropzone = document.getElementById('flight-paste-dropzone');
     flightPasteStatus = document.getElementById('flight-paste-status');
+    aiOptionsPricingList = document.getElementById('ai-options-pricing-list');
 
     // Tab Listeners
     tabItinerary?.addEventListener('click', () => switchCrmModule('itinerary'));
@@ -152,15 +154,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     markupModeFlatBtn?.addEventListener('click', () => setAiMarkupMode('flat'));
     
     // Pricing Auto-Calculation Bindings
-    aiPaxAdults?.addEventListener('input', syncNetFromPerPax);
-    aiNetPerAdult?.addEventListener('input', syncNetFromPerPax);
-    aiPaxKids?.addEventListener('input', syncNetFromPerPax);
-    aiNetPerKid?.addEventListener('input', syncNetFromPerPax);
-    aiPricingNet?.addEventListener('input', recalculateAiPricing);
-    aiPricingMarkupVal?.addEventListener('input', recalculateAiPricing);
+    aiPaxAdults?.addEventListener('input', () => { syncAllOptionsCalculations(); });
+    aiPaxKids?.addEventListener('input', () => { syncAllOptionsCalculations(); });
+    aiPricingMarkupVal?.addEventListener('input', () => { syncAllOptionsCalculations(); });
+    aiNetPerAdult?.addEventListener('input', () => { syncAllOptionsCalculations(); });
+    aiNetPerKid?.addEventListener('input', () => { syncAllOptionsCalculations(); });
     
-    aiAirfarePerPax?.addEventListener('input', syncAirfareTotals);
-    aiAirfareTotal?.addEventListener('input', recalculateAiPricing);
+    aiAirfarePerPax?.addEventListener('input', () => {
+        const adults = parseInt(aiPaxAdults?.value) || 0;
+        const kids = parseInt(aiPaxKids?.value) || 0;
+        const totalPax = Math.max(1, adults + kids);
+        const perPax = parseFloat(aiAirfarePerPax?.value) || 0;
+        if (aiAirfareTotal) aiAirfareTotal.value = Math.round(perPax * totalPax);
+        syncAllOptionsCalculations();
+    });
+
+    aiAirfareTotal?.addEventListener('input', () => {
+        syncAllOptionsCalculations();
+    });
 
     // Vision OCR Paste Handler
     flightPasteDropzone?.addEventListener('paste', handleFlightScreenshotPaste);
@@ -259,14 +270,14 @@ function switchCrmModule(m) {
 }
 
 // ==============================================================
-// AUTONOMOUS AI BUILD TAB ENGINE WITH MULTI-OPTION SUPPORT
+// MULTI-OPTION PRICING ARCHITECTURE
 // ==============================================================
 function setAiMarkupMode(mode) {
     currentAiMarkupType = mode;
     if (mode === 'pct') {
         markupModePctBtn.className = "px-2.5 py-1 bg-indigo-600 text-white rounded-md transition";
         markupModeFlatBtn.className = "px-2.5 py-1 text-slate-400 hover:text-white rounded-md transition";
-        aiMarkupLabel.innerText = "Markup Percentage (%)";
+        aiMarkupLabel.innerText = "Global Markup (%)";
         if (!aiPricingMarkupVal.value || aiPricingMarkupVal.value > 100) aiPricingMarkupVal.value = 15;
     } else {
         markupModeFlatBtn.className = "px-2.5 py-1 bg-indigo-600 text-white rounded-md transition";
@@ -274,100 +285,166 @@ function setAiMarkupMode(mode) {
         aiMarkupLabel.innerText = "Flat Markup (₹ INR)";
         if (!aiPricingMarkupVal.value || aiPricingMarkupVal.value <= 100) aiPricingMarkupVal.value = 15000;
     }
-    recalculateAiPricing();
+    syncAllOptionsCalculations();
 }
 
-function syncNetFromPerPax() {
-    const adults = parseInt(aiPaxAdults?.value) || 0;
-    const adultNet = parseFloat(aiNetPerAdult?.value) || 0;
-    const kids = parseInt(aiPaxKids?.value) || 0;
-    const kidNet = parseFloat(aiNetPerKid?.value) || 0;
+function renderLeftOptionsPricingControls() {
+    if (!aiOptionsPricingList) return;
 
-    const totalCalculatedNet = (adults * adultNet) + (kids * kidNet);
-    if (aiPricingNet && totalCalculatedNet > 0) {
-        aiPricingNet.value = Math.round(totalCalculatedNet);
+    if (currentAiData && Array.isArray(currentAiData.hotel_options) && currentAiData.hotel_options.length > 0) {
+        aiOptionsPricingList.innerHTML = currentAiData.hotel_options.map((opt, idx) => {
+            const isActive = idx === activeSelectedOptionIndex;
+            return `
+                <div class="p-3.5 rounded-xl border transition cursor-pointer ${isActive ? 'bg-indigo-950/40 border-indigo-500 shadow-lg shadow-indigo-500/10' : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'}" onclick="selectActiveOptionTier(${idx})">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-xs ${isActive ? 'text-indigo-300' : 'text-slate-300'}">${opt.option_name || `Option ${idx + 1}`}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-mono font-semibold ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'}">
+                            ${isActive ? 'Active Tier' : 'Select'}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2" onclick="event.stopPropagation()">
+                        <div>
+                            <span class="text-[9px] text-slate-400 block mb-0.5">Adult Net (₹ / Pax)</span>
+                            <input type="number" value="${Math.round(opt.per_person_inr || 0)}" class="opt-adult-net-input w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="updateOptionCustomPrice(${idx}, 'adult', this.value)">
+                        </div>
+                        <div>
+                            <span class="text-[9px] text-slate-400 block mb-0.5">Kid Net (₹ / Kid)</span>
+                            <input type="number" value="${Math.round(opt.kid_net_inr || 0)}" class="opt-kid-net-input w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="updateOptionCustomPrice(${idx}, 'kid', this.value)">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        aiOptionsPricingList.innerHTML = `
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80 text-xs space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-white">Default Package Rate</span>
+                    <span class="text-[10px] text-slate-500 font-mono">Option 1</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <span class="text-[9px] text-slate-400 block mb-0.5">Adult Net (₹ / Pax)</span>
+                        <input type="number" id="ai-net-per-adult" value="${Math.round(currentAiData?.adult_net_cost_per_person || 0)}" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="currentAiData.adult_net_cost_per_person = parseFloat(this.value)||0; syncAllOptionsCalculations();">
+                    </div>
+                    <div>
+                        <span class="text-[9px] text-slate-400 block mb-0.5">Kid Net (₹ / Kid)</span>
+                        <input type="number" id="ai-net-per-kid" value="${Math.round(currentAiData?.kid_net_cost_per_person || 0)}" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono focus:border-indigo-500 focus:outline-none" oninput="currentAiData.kid_net_cost_per_person = parseFloat(this.value)||0; syncAllOptionsCalculations();">
+                    </div>
+                </div>
+            </div>
+        `;
     }
-    recalculateAiPricing();
 }
 
-function syncAirfareTotals() {
-    const adults = parseInt(aiPaxAdults?.value) || 0;
-    const kids = parseInt(aiPaxKids?.value) || 0;
-    const totalPax = Math.max(1, adults + kids);
-    const airfarePerPax = parseFloat(aiAirfarePerPax?.value) || 0;
-    if (aiAirfareTotal) {
-        aiAirfareTotal.value = Math.round(airfarePerPax * totalPax);
+function selectActiveOptionTier(index) {
+    activeSelectedOptionIndex = index;
+    renderLeftOptionsPricingControls();
+    syncAllOptionsCalculations();
+}
+
+function updateOptionCustomPrice(optIdx, type, value) {
+    if (currentAiData?.hotel_options?.[optIdx]) {
+        if (type === 'adult') {
+            currentAiData.hotel_options[optIdx].per_person_inr = parseFloat(value) || 0;
+        } else {
+            currentAiData.hotel_options[optIdx].kid_net_inr = parseFloat(value) || 0;
+        }
     }
-    recalculateAiPricing();
+    syncAllOptionsCalculations();
 }
 
-function recalculateAiPricing() {
-    const net = parseFloat(aiPricingNet?.value) || 0;
-    const markup = parseFloat(aiPricingMarkupVal?.value) || 0;
-    const airfare = parseFloat(aiAirfareTotal?.value) || 0;
+function syncAllOptionsCalculations() {
     const adults = parseInt(aiPaxAdults?.value) || 2;
     const kids = parseInt(aiPaxKids?.value) || 0;
     const totalPax = Math.max(1, adults + kids);
+    const markup = parseFloat(aiPricingMarkupVal?.value) || 0;
+    const airfare = parseFloat(aiAirfareTotal?.value) || 0;
 
-    currentAiNetCost = net;
     currentAiMarkupVal = markup;
 
-    let margin = 0;
-    let landQuoted = net;
+    // Calculate quoted rates for ALL options
+    if (currentAiData?.hotel_options && currentAiData.hotel_options.length > 0) {
+        currentAiData.hotel_options.forEach((opt) => {
+            const adultNet = parseFloat(opt.per_person_inr) || 0;
+            const kidNet = parseFloat(opt.kid_net_inr) || 0;
+            const totalNet = (adults * adultNet) + (kids * kidNet);
 
-    if (currentAiMarkupType === 'pct') {
-        margin = Math.round(net * (markup / 100));
-        landQuoted = Math.round(net + margin);
+            let margin = 0;
+            let landQuoted = totalNet;
+
+            if (currentAiMarkupType === 'pct') {
+                margin = Math.round(totalNet * (markup / 100));
+                landQuoted = Math.round(totalNet + margin);
+                opt.calculated_per_adult_quoted = Math.round((adultNet + (adultNet * (markup / 100))) + (airfare / totalPax));
+                opt.calculated_per_kid_quoted = Math.round((kidNet + (kidNet * (markup / 100))) + (airfare / totalPax));
+            } else {
+                margin = Math.round(markup);
+                landQuoted = Math.round(totalNet + margin);
+                const flatPerPaxMargin = margin / totalPax;
+                opt.calculated_per_adult_quoted = Math.round(adultNet + flatPerPaxMargin + (airfare / totalPax));
+                opt.calculated_per_kid_quoted = Math.round(kidNet + flatPerPaxMargin + (airfare / totalPax));
+            }
+
+            opt.calculated_margin = margin;
+            opt.calculated_grand_total = landQuoted + airfare;
+        });
+
+        // Set active selected tier metrics in summary cards
+        const activeOpt = currentAiData.hotel_options[activeSelectedOptionIndex] || currentAiData.hotel_options[0];
+        if (aiPerAdultQuoted) aiPerAdultQuoted.innerText = `₹${activeOpt.calculated_per_adult_quoted.toLocaleString('en-IN')}`;
+        if (aiPerKidQuoted) aiPerKidQuoted.innerText = `₹${activeOpt.calculated_per_kid_quoted.toLocaleString('en-IN')}`;
+        if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${activeOpt.calculated_margin.toLocaleString('en-IN')}`;
+        if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${activeOpt.calculated_grand_total.toLocaleString('en-IN')}/-`;
+        
+        currentAiNetCost = activeOpt.calculated_grand_total - activeOpt.calculated_margin;
     } else {
-        margin = Math.round(markup);
-        landQuoted = Math.round(net + margin);
+        const adultNet = parseFloat(currentAiData?.adult_net_cost_per_person || aiNetPerAdult?.value) || 0;
+        const kidNet = parseFloat(currentAiData?.kid_net_cost_per_person || aiNetPerKid?.value) || 0;
+        const totalNet = (adults * adultNet) + (kids * kidNet);
+
+        let margin = 0;
+        let landQuoted = totalNet;
+        let perAdultQuoted = 0;
+        let perKidQuoted = 0;
+
+        if (currentAiMarkupType === 'pct') {
+            margin = Math.round(totalNet * (markup / 100));
+            landQuoted = Math.round(totalNet + margin);
+            perAdultQuoted = Math.round((adultNet + (adultNet * (markup / 100))) + (airfare / totalPax));
+            perKidQuoted = Math.round((kidNet + (kidNet * (markup / 100))) + (airfare / totalPax));
+        } else {
+            margin = Math.round(markup);
+            landQuoted = Math.round(totalNet + margin);
+            const flatPerPaxMargin = margin / totalPax;
+            perAdultQuoted = Math.round(adultNet + flatPerPaxMargin + (airfare / totalPax));
+            perKidQuoted = Math.round(kidNet + flatPerPaxMargin + (airfare / totalPax));
+        }
+
+        const grandTotal = landQuoted + airfare;
+
+        if (aiPerAdultQuoted) aiPerAdultQuoted.innerText = `₹${perAdultQuoted.toLocaleString('en-IN')}`;
+        if (aiPerKidQuoted) aiPerKidQuoted.innerText = `₹${perKidQuoted.toLocaleString('en-IN')}`;
+        if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${margin.toLocaleString('en-IN')}`;
+        if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
+
+        currentAiNetCost = totalNet;
     }
 
-    const grandTotal = landQuoted + airfare;
-
-    const adultNet = parseFloat(aiNetPerAdult?.value) || 0;
-    const kidNet = parseFloat(aiNetPerKid?.value) || 0;
-
-    let perAdultQuoted = 0;
-    let perKidQuoted = 0;
-
-    if (currentAiMarkupType === 'pct') {
-        perAdultQuoted = Math.round((adultNet + (adultNet * (markup / 100))) + (airfare / totalPax));
-        perKidQuoted = Math.round((kidNet + (kidNet * (markup / 100))) + (airfare / totalPax));
-    } else {
-        const flatPerPaxMargin = margin / totalPax;
-        perAdultQuoted = Math.round(adultNet + flatPerPaxMargin + (airfare / totalPax));
-        perKidQuoted = Math.round(kidNet + flatPerPaxMargin + (airfare / totalPax));
-    }
-
-    if (aiPricingMarginDisplay) aiPricingMarginDisplay.innerText = `₹${margin.toLocaleString('en-IN')}`;
-    if (aiPricingGrandTotal) aiPricingGrandTotal.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
-    if (aiPerAdultQuoted) aiPerAdultQuoted.innerText = `₹${perAdultQuoted.toLocaleString('en-IN')}`;
-
-    if (kids > 0 && aiKidsSummaryRow && aiPerKidQuoted) {
+    if (kids > 0 && aiKidsSummaryRow) {
         aiKidsSummaryRow.classList.remove('hidden');
-        aiPerKidQuoted.innerText = `₹${perKidQuoted.toLocaleString('en-IN')}`;
     } else if (aiKidsSummaryRow) {
         aiKidsSummaryRow.classList.add('hidden');
     }
 
-    const priceHolder = document.getElementById('ai-rendered-grand-price');
-    if (priceHolder) {
-        priceHolder.innerText = `₹${grandTotal.toLocaleString('en-IN')}/-`;
-    }
-
-    const paxBreakdownTag = document.getElementById('ai-rendered-pax-pricing-tag');
-    if (paxBreakdownTag) {
-        if (kids > 0) {
-            paxBreakdownTag.innerHTML = `(${adults} Adults @ ₹${perAdultQuoted.toLocaleString('en-IN')} | ${kids} Children @ ₹${perKidQuoted.toLocaleString('en-IN')}${airfare > 0 ? ' incl. flights' : ''})`;
-        } else {
-            paxBreakdownTag.innerHTML = `(₹${perAdultQuoted.toLocaleString('en-IN')} per adult${airfare > 0 ? ' all-inclusive with flights' : ''})`;
-        }
+    // Re-render the live document canvas with the updated option figures
+    if (aiQuotePreviewPane && currentAiData) {
+        aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
     }
 }
 
 // ==============================================================
-// IN-BROWSER TESSERACT OCR + LLM TEXT STRUCTURING FOR FLIGHTS
+// IN-BROWSER TESSERACT OCR FOR FLIGHT SCHEDULES
 // ==============================================================
 async function handleFlightScreenshotPaste(e) {
     const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
@@ -385,7 +462,7 @@ async function handleFlightScreenshotPaste(e) {
 
     e.preventDefault();
     if (flightPasteStatus) {
-        flightPasteStatus.innerHTML = `<span class="text-cyan-400 animate-pulse">↻ OCR Scanning flight schedule from screenshot...</span>`;
+        flightPasteStatus.innerHTML = `<span class="text-cyan-400 animate-pulse">↻ Scanning flight schedule with OCR...</span>`;
     }
 
     try {
@@ -404,7 +481,7 @@ async function handleFlightScreenshotPaste(e) {
         }
 
         if (flightPasteStatus) {
-            flightPasteStatus.innerHTML = `<span class="text-indigo-400 animate-pulse">↻ Structuring route segments...</span>`;
+            flightPasteStatus.innerHTML = `<span class="text-indigo-400 animate-pulse">↻ Formatting route segments...</span>`;
         }
 
         const prompt = `You are a flight schedule parser. Extract flight routing from this OCR text into valid JSON.
@@ -460,7 +537,8 @@ Return ONLY valid JSON.`;
                     title: "Custom Flight & Land Proposal",
                     destination: parsed.flights[0].route || "Custom Destination",
                     travel_date: parsed.flights[0].dep_date || "",
-                    pax_count: parseInt(aiPaxAdults?.value) || 2,
+                    pax_adults: parseInt(aiPaxAdults?.value) || 2,
+                    pax_kids: parseInt(aiPaxKids?.value) || 0,
                     vehicle_standard: "Private Dedicated Fleet",
                     inclusions: ["All flight routing as mentioned", "Airport assistance"],
                     exclusions: ["Excess baggage charges", "Personal expenses"],
@@ -477,8 +555,7 @@ Return ONLY valid JSON.`;
                 flightPasteStatus.innerHTML = `<span class="text-emerald-400 font-bold">✓ Added: ${parsed.flights.map(f => f.flight_number + ' ' + f.route).join(', ')}</span>`;
             }
 
-            aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
-            recalculateAiPricing();
+            syncAllOptionsCalculations();
         } else {
             if (flightPasteStatus) flightPasteStatus.innerText = "No flight segments found in screenshot.";
         }
@@ -492,7 +569,7 @@ Return ONLY valid JSON.`;
 }
 
 // ==============================================================
-// MULTI-OPTION PROPOSAL RENDERER (ACCOMMODATION DETAILS & DAY-WISE ITINERARY)
+// MULTI-OPTION PROPOSAL RENDERER WITH INVESTMENT SUMMARY
 // ==============================================================
 function renderAiProposalDocument(data) {
     if (!data) return '';
@@ -504,6 +581,7 @@ function renderAiProposalDocument(data) {
     const kids = parseInt(aiPaxKids?.value) || 0;
     const pax = adults + kids;
     const vehicle = data.vehicle_standard || "Private Dedicated Fleet";
+    const airfare = parseFloat(aiAirfareTotal?.value) || 0;
 
     // 1. Aviation Matrices
     let flHtml = '';
@@ -523,25 +601,29 @@ function renderAiProposalDocument(data) {
         flHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0284c7;">I. Aviation Matrices & Flight Schedule</h3>${fList}</div>`;
     }
 
-    // 2. Accommodation Details (Multi-Option Supported)
+    // 2. Accommodation Details
     let htHtml = '';
+    let pricingSummaryTableHtml = '';
+
     if (Array.isArray(data.hotel_options) && data.hotel_options.length > 0) {
         let optionsCards = data.hotel_options.map((opt, idx) => {
             let rows = (opt.hotels || []).map(h => `
                 <tr style="border-bottom: 1px solid #f1f5f9; font-size: 11px;">
                     <td style="padding: 7px 8px;"><strong>${h.city || h.location || ''}</strong></td>
-                    <td style="padding: 7px 8px;">🏢 <strong>${h.hotel_name || ''}</strong> <span style="color:#6366f1; font-size:10px;">${h.star_rating || ''}</span></td>
+                    <td style="padding: 7px 8px;">🏢 <strong>${h.hotel_name || ''}</strong> <span style="color:#6366f1; font-size:10px; font-weight:700;">${h.star_rating || ''}</span></td>
                     <td style="padding: 7px 8px; color:#64748b;">${h.room_type || h.room_category || 'Standard'}</td>
                     <td style="padding: 7px 8px; text-align:center;">${h.meal_plan || 'BB'}</td>
                     <td style="padding: 7px 8px; text-align:center; font-weight:700; color:#4f46e5;">${h.nights || 1} N</td>
                 </tr>
             `).join('');
 
+            const quotedAdultRate = opt.calculated_per_adult_quoted || Math.round((opt.per_person_inr || 0) * 1.15);
+
             return `
                 <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
                     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
                         <strong style="color: #0f172a; font-size: 11.5px;">${opt.option_name || `OPTION 0${idx + 1}`} ${opt.tier_category ? `&bull; <span style="color:#4f46e5;">${opt.tier_category}</span>` : ''}</strong>
-                        ${opt.per_person_inr ? `<span style="font-size:11px; font-weight:800; color:#059669; font-family:monospace;">₹${Number(opt.per_person_inr).toLocaleString('en-IN')} / Adult</span>` : (opt.per_person_usd ? `<span style="font-size:11px; font-weight:800; color:#059669; font-family:monospace;">$${opt.per_person_usd} / Pax</span>` : '')}
+                        <span style="font-size:11.5px; font-weight:800; color:#059669; font-family:monospace;">₹${quotedAdultRate.toLocaleString('en-IN')} / Adult</span>
                     </div>
                     <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                         <thead>
@@ -549,7 +631,7 @@ function renderAiProposalDocument(data) {
                                 <th style="padding: 5px 8px; text-align: left;">City</th>
                                 <th style="padding: 5px 8px; text-align: left;">Hotel Name</th>
                                 <th style="padding: 5px 8px; text-align: left;">Room Type</th>
-                                <th style="padding: 5px 8px; text-align: center;">Meal</th>
+                                <th style="padding: 5px 8px; text-align: center;">Meal Plan</th>
                                 <th style="padding: 5px 8px; text-align: center;">Duration</th>
                             </tr>
                         </thead>
@@ -560,6 +642,34 @@ function renderAiProposalDocument(data) {
         }).join('');
 
         htHtml = `<div style="margin-bottom: 20px;"><h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">II. Accommodation Details</h3>${optionsCards}</div>`;
+
+        // Multi-Tier Price Comparison Table for PDF
+        let pricingRows = data.hotel_options.map(opt => `
+            <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                <td style="padding: 9px 8px; font-weight: 700; color: #0f172a;">${opt.option_name || 'Option Tier'}</td>
+                <td style="padding: 9px 8px; text-align: center; color: #4f46e5; font-weight: 800; font-family: monospace;">₹${(opt.calculated_per_adult_quoted || 0).toLocaleString('en-IN')}</td>
+                ${kids > 0 ? `<td style="padding: 9px 8px; text-align: center; color: #d97706; font-weight: 800; font-family: monospace;">₹${(opt.calculated_per_kid_quoted || 0).toLocaleString('en-IN')}</td>` : ''}
+                <td style="padding: 9px 8px; text-align: right; color: #059669; font-weight: 900; font-family: monospace;">₹${(opt.calculated_grand_total || 0).toLocaleString('en-IN')}/-</td>
+            </tr>
+        `).join('');
+
+        pricingSummaryTableHtml = `
+            <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                <h3 style="font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; font-weight: 800; color: #0f172a;">IV. Investment Summary Matrix</h3>
+                <table style="width: 100%; border-collapse: collapse; background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <thead>
+                        <tr style="background: #0f172a; color: #ffffff; font-size: 10px; text-transform: uppercase;">
+                            <th style="padding: 7px 8px; text-align: left;">Selected Package Option</th>
+                            <th style="padding: 7px 8px; text-align: center;">Per Adult Investment</th>
+                            ${kids > 0 ? `<th style="padding: 7px 8px; text-align: center;">Per Child Investment</th>` : ''}
+                            <th style="padding: 7px 8px; text-align: right;">Grand All-Inclusive</th>
+                        </tr>
+                    </thead>
+                    <tbody>${pricingRows}</tbody>
+                </table>
+            </div>
+        `;
+
     } else if (Array.isArray(data.hotels) && data.hotels.length > 0) {
         let hRows = data.hotels.map(h => `
             <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11.5px;">
@@ -604,7 +714,7 @@ function renderAiProposalDocument(data) {
                 <div><strong>Experience:</strong> ${title}</div>
                 <div><strong>Destination:</strong> 📍 ${dest}</div>
                 <div><strong>Dates:</strong> 📅 ${travelDate}</div>
-                <div><strong>Guests:</strong> 👥 ${pax} Travelers</div>
+                <div><strong>Guests:</strong> 👥 ${pax} Travelers (${adults} Adults${kids > 0 ? `, ${kids} Children` : ''})</div>
                 <div style="grid-column: span 2;"><strong>Ground Fleet:</strong> 🚘 ${vehicle}</div>
             </div>
 
@@ -623,10 +733,14 @@ function renderAiProposalDocument(data) {
                 </div>
             </div>
 
+            ${pricingSummaryTableHtml}
+
             <div style="background: #0f172a; color: #ffffff; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid;">
                 <div>
-                    <span style="font-size: 10px; color: #94a3b8; display: block; font-weight: 600;">GRAND CLIENT INVESTMENT (ALL-INCLUSIVE)</span>
-                    <span id="ai-rendered-pax-pricing-tag" style="font-size: 10.5px; color: #38bdf8; font-family: monospace;"></span>
+                    <span style="font-size: 10px; color: #94a3b8; display: block; font-weight: 600;">ACTIVE OPTION QUOTED INVESTMENT</span>
+                    <span id="ai-rendered-pax-pricing-tag" style="font-size: 10.5px; color: #38bdf8; font-family: monospace;">
+                        (Option 0${activeSelectedOptionIndex + 1} Selected)
+                    </span>
                 </div>
                 <div style="font-size: 18px; font-weight: 800; color: #10b981; font-family: monospace;" id="ai-rendered-grand-price">₹0/-</div>
             </div>
@@ -663,63 +777,16 @@ CRITICAL EXTRACTION RULES:
 4. "pax_adults": Number of adults (e.g. 2).
 5. "pax_kids": Number of children if present (else 0).
 6. "vehicle_standard": Fleet used (e.g. "Private AC Suzuki APV / Toyota Avanza").
-7. "adult_net_cost_per_person": Rate for Option 1 per person in INR (multiply USD by 87, e.g. $309 x 87 = 26883).
-8. "kid_net_cost_per_person": Rate per child in INR (if mentioned, else 0).
-9. "hotel_options": Array of ALL hotel tier options mentioned (Option 1, Option 2, Option 3, etc.).
+7. "hotel_options": Array of ALL hotel tier options mentioned (Option 1, Option 2, Option 3, etc.).
    Each option must have:
-   - "option_name": "Option 1 (3 Star)", "Option 2 (4 Star)", "Option 3 (4 Star Luxury Pool Villa)"
-   - "per_person_usd": 309 (numeric USD if mentioned)
-   - "per_person_inr": 26883 (USD x 87 converted to INR)
-   - "hotels": Array of hotel stays with "city", "hotel_name", "star_rating", "room_type", "meal_plan", "nights".
-10. "itinerary_days": Array of all day descriptions with "title" and "description".
-11. "inclusions": Array of explicit inclusions.
-12. "exclusions": Array of explicit exclusions.
-
-SCHEMA:
-{
-  "title": "string",
-  "destination": "string",
-  "travel_date": "string",
-  "pax_adults": 2,
-  "pax_kids": 0,
-  "vehicle_standard": "string",
-  "adult_net_cost_per_person": 26883,
-  "kid_net_cost_per_person": 0,
-  "hotel_options": [
-    {
-      "option_name": "Option 1 (3 Star Standard)",
-      "per_person_usd": 309,
-      "per_person_inr": 26883,
-      "hotels": [
-        { "city": "Kuta", "hotel_name": "Zia Hotel Kuta", "star_rating": "3 Star", "room_type": "Superior Room", "meal_plan": "Bed and Breakfast", "nights": 3 },
-        { "city": "Ubud", "hotel_name": "Fullmoon Villa Ubud", "star_rating": "4 Star", "room_type": "One Bedroom Pool Villa", "meal_plan": "Bed and Breakfast", "nights": 2 }
-      ]
-    },
-    {
-      "option_name": "Option 2 (4 Star Premium)",
-      "per_person_usd": 314,
-      "per_person_inr": 27318,
-      "hotels": [
-        { "city": "Kuta", "hotel_name": "Anathera Resort Kuta", "star_rating": "4 Star", "room_type": "Deluxe City View", "meal_plan": "Bed and Breakfast", "nights": 3 },
-        { "city": "Ubud", "hotel_name": "Kori Maharani Villas", "star_rating": "4 Star", "room_type": "Beach Pool Hut", "meal_plan": "Bed and Breakfast", "nights": 2 }
-      ]
-    },
-    {
-      "option_name": "Option 3 (4 Star Deluxe Pool Villa)",
-      "per_person_usd": 355,
-      "per_person_inr": 30885,
-      "hotels": [
-        { "city": "Kuta", "hotel_name": "Rama Beach Resort & Villas", "star_rating": "4 Star", "room_type": "Deluxe Room", "meal_plan": "Bed and Breakfast", "nights": 3 },
-        { "city": "Ubud", "hotel_name": "Ubud Raya Villa", "star_rating": "4 Star", "room_type": "Superior One Bedroom Pool Villa", "meal_plan": "Bed and Breakfast", "nights": 2 }
-      ]
-    }
-  ],
-  "itinerary_days": [
-    { "title": "string", "description": "string" }
-  ],
-  "inclusions": ["string"],
-  "exclusions": ["string"]
-}
+   - "option_name": Clean descriptive title (e.g. "Option 1 (3 Star Standard)", "Option 2 (4 Star Premium)", "Option 3 (4 Star Pool Villa)")
+   - "per_person_usd": Numeric USD price per person if specified (e.g. 309, 314, 355)
+   - "per_person_inr": USD price multiplied by 87 (e.g. 26883, 27318, 30885)
+   - "kid_net_inr": Child rate in INR (if mentioned, else 0)
+   - "hotels": Array of hotels in that option [{ "city": "Kuta", "hotel_name": "Zia Hotel Kuta", "star_rating": "3 Star", "room_type": "Superior Room", "meal_plan": "Bed and Breakfast", "nights": 3 }]
+8. "itinerary_days": Array of all day descriptions with "title" and "description".
+9. "inclusions": Array of explicit inclusions.
+10. "exclusions": Array of explicit exclusions.
 
 Vendor Text:
 """
@@ -756,16 +823,13 @@ Return ONLY a valid JSON object. Do not wrap in markdown fences.`;
         const data = await response.json();
         currentAiData = extractJsonRobustly(data.choices[0].message.content);
 
-        // Populate Adult & Kid counts and per-pax rates
+        // Populate Adult & Kid counts
         if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
         if (currentAiData.pax_kids !== undefined) aiPaxKids.value = currentAiData.pax_kids;
-        if (currentAiData.adult_net_cost_per_person) aiNetPerAdult.value = Math.round(currentAiData.adult_net_cost_per_person);
-        if (currentAiData.kid_net_cost_per_person) aiNetPerKid.value = Math.round(currentAiData.kid_net_cost_per_person);
 
-        syncNetFromPerPax();
-
-        aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
-        recalculateAiPricing();
+        activeSelectedOptionIndex = 0;
+        renderLeftOptionsPricingControls();
+        syncAllOptionsCalculations();
 
         if (aiCanvasStatus) aiCanvasStatus.innerText = "Proposal Generated";
 
@@ -828,8 +892,8 @@ Return ONLY the updated valid JSON adhering to the exact same schema.`;
         const data = await response.json();
         currentAiData = extractJsonRobustly(data.choices[0].message.content);
 
-        aiQuotePreviewPane.innerHTML = renderAiProposalDocument(currentAiData);
-        recalculateAiPricing();
+        renderLeftOptionsPricingControls();
+        syncAllOptionsCalculations();
 
         aiRefinePromptInput.value = '';
         if (aiCanvasStatus) aiCanvasStatus.innerText = "Refinements applied";
@@ -1369,3 +1433,5 @@ window.addStandaloneHotelBlock = addStandaloneHotelBlock;
 window.removeStandaloneHotelBlock = removeStandaloneHotelBlock;
 window.calculateStandaloneNights = calculateStandaloneNights;
 window.updateHotelVoucherLivePreview = updateHotelVoucherLivePreview;
+window.selectActiveOptionTier = selectActiveOptionTier;
+window.updateOptionCustomPrice = updateOptionCustomPrice;
