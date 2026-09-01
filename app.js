@@ -4,6 +4,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 
 // Free Groq Cloud Key for Fast DMC AI Extraction
 const GROQ_API_KEY = "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";
+const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
@@ -56,7 +57,7 @@ function formatPremiumDate(dateStr) {
 function sanitizeText(str) {
     if (!str) return "";
     return str
-        .replace(/https?:\/\/[^\s]+/gi, '[portal-link]')
+        .replace(/https?:\/\/[^\s]+/gi, '[web-portal]')
         .replace(/<[^>]*>/g, ' ')
         .replace(/[\u200B-\u200D\uFEFF]/g, '')
         .replace(/[\u00A0]/g, ' ')
@@ -490,7 +491,7 @@ Output format:
 
 Return JSON only.`;
 
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await fetch(GROQ_ENDPOINT, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -768,7 +769,7 @@ ${rawText}
 Return valid JSON only.`;
 
     try {
-        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+        const response = await fetch(GROQ_ENDPOINT, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -839,7 +840,7 @@ ${JSON.stringify(currentAiData)}
 Return ONLY the updated valid JSON adhering to the exact same schema.`;
 
     try {
-        const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+        const response = await fetch(GROQ_ENDPOINT, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
