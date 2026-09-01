@@ -6,6 +6,16 @@ const SUPABASE_ANON_KEY = "sb_publishable_l2-bk_euDS6C-Yf6zEgDog_pnkW5F8Q";
 const GROQ_API_KEY = "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";
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
+const GROQ_MODELS_WATERFALL = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768",
+    "deepseek-r1-distill-llama-70b",
+    "qwen-2.5-32b"
+];
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =====================================================
 
@@ -57,12 +67,64 @@ function formatPremiumDate(dateStr) {
 function sanitizeText(str) {
     if (!str) return "";
     return str
-        .replace(/https?:\/\/[^\s]+/gi, '[web-portal]')
+        .replace(/https?:\/\/[^\s]+/gi, '[portal-link]')
         .replace(/<[^>]*>/g, ' ')
         .replace(/[\u200B-\u200D\uFEFF]/g, '')
         .replace(/[\u00A0]/g, ' ')
         .replace(/[^\x20-\x7E\n\t\r]/g, ' ')
         .trim();
+}
+
+function extractJsonRobustly(text) {
+    if (!text) return {};
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    
+    const startIdx = cleaned.indexOf('{');
+    const endIdx = cleaned.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+    
+    return JSON.parse(cleaned);
+}
+
+// Resilient API Caller that auto-falls back to the next model if 404/400 occurs
+async function executeGroqChatWithFallback(promptText, statusLabelElement) {
+    let lastError = null;
+
+    for (const model of GROQ_MODELS_WATERFALL) {
+        try {
+            if (statusLabelElement) statusLabelElement.innerText = `Connecting via ${model}...`;
+            
+            const response = await fetch(GROQ_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        { role: "system", content: "You output valid JSON directly with zero conversational filler or markdown fences." },
+                        { role: "user", content: promptText }
+                    ],
+                    temperature: 0.1
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } else {
+                const errBody = await response.text();
+                lastError = new Error(`${model} (${response.status}): ${errBody}`);
+            }
+        } catch (e) {
+            lastError = e;
+        }
+    }
+    throw lastError || new Error("All Groq model endpoints were unavailable.");
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -491,26 +553,8 @@ Output format:
 
 Return JSON only.`;
 
-        const response = await fetch(GROQ_ENDPOINT, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [
-                    { role: "system", content: "You output valid JSON directly with no commentary or markdown code fences." },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.1
-            })
-        });
-
-        if (!response.ok) throw new Error("Could not parse OCR flight text");
-
-        const data = await response.json();
-        const parsed = extractJsonRobustly(data.choices[0].message.content);
+        const content = await executeGroqChatWithFallback(prompt, flightPasteStatus);
+        const parsed = extractJsonRobustly(content);
 
         if (Array.isArray(parsed.flights) && parsed.flights.length > 0) {
             if (!currentAiData) {
@@ -550,7 +594,7 @@ Return JSON only.`;
 }
 
 // ==============================================================
-// PROPOSAL RENDERER (CLEAN HEADERS & FORMATTING)
+// PROPOSAL RENDERER (CLEAN HEADERS & TOTAL SUMMARY MATRIX)
 // ==============================================================
 function renderAiProposalDocument(data) {
     if (!data) return '';
@@ -718,20 +762,6 @@ function renderAiProposalDocument(data) {
     `;
 }
 
-function extractJsonRobustly(text) {
-    if (!text) return {};
-    let cleaned = text.trim();
-    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-    
-    const startIdx = cleaned.indexOf('{');
-    const endIdx = cleaned.lastIndexOf('}');
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-        cleaned = cleaned.substring(startIdx, endIdx + 1);
-    }
-    
-    return JSON.parse(cleaned);
-}
-
 async function handleAutonomousAiBuild() {
     const rawText = sanitizeText(aiFreeRawText?.value);
     if (!rawText) {
@@ -769,29 +799,8 @@ ${rawText}
 Return valid JSON only.`;
 
     try {
-        const response = await fetch(GROQ_ENDPOINT, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [
-                    { role: "system", content: "You output valid JSON directly with zero conversational filler or markdown fences." },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.1
-            })
-        });
-
-        if (!response.ok) {
-            const errTxt = await response.text();
-            throw new Error(`API error (${response.status}): ${errTxt}`);
-        }
-
-        const data = await response.json();
-        currentAiData = extractJsonRobustly(data.choices[0].message.content);
+        const content = await executeGroqChatWithFallback(prompt, aiCanvasStatus);
+        currentAiData = extractJsonRobustly(content);
 
         // Populate Adult & Kid counts
         if (currentAiData.pax_adults) aiPaxAdults.value = currentAiData.pax_adults;
@@ -840,26 +849,8 @@ ${JSON.stringify(currentAiData)}
 Return ONLY the updated valid JSON adhering to the exact same schema.`;
 
     try {
-        const response = await fetch(GROQ_ENDPOINT, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [
-                    { role: "system", content: "You output JSON directly without markdown fences." },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.1
-            })
-        });
-
-        if (!response.ok) throw new Error("Refinement failed: " + response.status);
-
-        const data = await response.json();
-        currentAiData = extractJsonRobustly(data.choices[0].message.content);
+        const content = await executeGroqChatWithFallback(prompt, aiCanvasStatus);
+        currentAiData = extractJsonRobustly(content);
 
         renderLeftOptionsPricingControls();
         syncAllOptionsCalculations();
